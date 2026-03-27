@@ -21,7 +21,6 @@ export function App() {
 
       setFocusedProjectId(projectId);
 
-      // If already unlocked, show dossier immediately
       if (unlockedProjectIds.has(projectId)) {
         setOpenProjectId(projectId);
       } else {
@@ -55,7 +54,7 @@ export function App() {
 
   return (
     <main className="app-shell">
-      <Canvas dpr={[1, 2]} shadows gl={{ antialias: true, toneMapping: THREE.ACESFilmicToneMapping, toneMappingExposure: 1.1 }}>
+      <Canvas dpr={[1, 2]} shadows gl={{ antialias: true, toneMapping: THREE.ACESFilmicToneMapping, toneMappingExposure: 0.78 }}>
         <PortfolioScene
           focusedProjectId={focusedProjectId}
           unlockedProjectIds={unlockedProjectIds}
@@ -68,17 +67,54 @@ export function App() {
         <p className="eyebrow">Welcome on board</p>
         <h1>DroneGone</h1>
         <p className="lede">
-          Interceptor on the hunt.
-          <br />
-          We find them, we bind them, we leave them behind
+          <br />Interceptor on the hunt.
+          <br /><br />
+          We find them, <br />we bind them, <br />we leave them behind...
         </p>
       </section>
 
       <section className="hud hud-bottom-left">
         <p className="label">Controls</p>
-        <p>MOVE: arrows / wasd</p>
-        <p>CAMERA: automatic follow rig</p>
-        <p>PHYSICS: Rapier rigid bodies and trigger zones</p>
+        <div className="control-list">
+          <div className="control-row">
+            <span className="control-name">Move</span>
+            <div className="control-icons control-icons-stack">
+              <div className="keypad-wasd">
+                <span className="keycap keycap-small keycap-ghost" />
+                <span className="keycap keycap-small">W</span>
+                <span className="keycap keycap-small keycap-ghost" />
+                <span className="keycap keycap-small">A</span>
+                <span className="keycap keycap-small">S</span>
+                <span className="keycap keycap-small">D</span>
+              </div>
+              <div className="keypad-arrows">
+                <span className="keycap keycap-small keycap-ghost" />
+                <span className="keycap keycap-small">↑</span>
+                <span className="keycap keycap-small keycap-ghost" />
+                <span className="keycap keycap-small">←</span>
+                <span className="keycap keycap-small">↓</span>
+                <span className="keycap keycap-small">→</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="control-row">
+            <span className="control-name">Boost</span>
+            <div className="control-icons">
+              <span className="keycap keycap-space">SPACE</span>
+            </div>
+          </div>
+
+          <div className="control-row control-row-text">
+            <span className="control-name">Camera</span>
+            <span className="control-copy">automatic follow rig</span>
+          </div>
+
+          <div className="control-row control-row-text">
+            <span className="control-name">Physics</span>
+            <span className="control-copy">Rapier bodies and trigger zones</span>
+          </div>
+        </div>
       </section>
 
       <aside className="hud hud-bottom-right">

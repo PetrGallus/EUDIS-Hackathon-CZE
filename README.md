@@ -6,7 +6,7 @@ This repository contains a **non-weapon** UAV operations software platform.
 It is intended for simulation, operator training, contested-environment resilience testing,
 and software integration experiments only.
 
-## Professional Stack (Monorepo)
+## Repository Stack
 
 This repository is organized around four top-level subprojects:
 
@@ -24,12 +24,14 @@ The active application stack lives inside `gamified-physical-webapp/`:
 
 Core goals:
 
-- Real-time telemetry ingestion and visualization
+- MATLAB 3 subprojects
+  - telemetry ingestion and visualization
+- Collect these data into the operator dashboard
 - Cluster-based operator workflow (select locality cluster, then drone)
 - Resilience indicators for contested/jammed environments
 - Stable contracts for future C2 integration
 
-## MATLAB Subproject (Real Content)
+## MATLAB Subprojects
 
 `matlab-code-outputs/` now contains actual MATLAB-side control and simulation work, not placeholders.
 
@@ -44,7 +46,7 @@ It includes:
 
 Use this subproject as the algorithm + controls workspace, then connect produced telemetry to the Node bridge and dashboard in `gamified-physical-webapp/`.
 
-## Contested-Environment Features (Safe IT Scope)
+## Contested-Environment Features
 
 Implemented in telemetry contracts and dashboard:
 
