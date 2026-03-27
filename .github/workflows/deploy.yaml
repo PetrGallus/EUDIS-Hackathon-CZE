@@ -1,0 +1,17 @@
+name: Remote Deploy
+
+on:
+  push:
+    branches: [ main ] # Spustí se při každém pushi do mainu
+
+jobs:
+  build:
+    runs-on: self-hosted 
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install and Build
+        run: |
+          npm install
+          npm run dev
