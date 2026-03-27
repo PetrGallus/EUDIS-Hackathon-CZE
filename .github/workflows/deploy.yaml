@@ -1,17 +1,97 @@
-name: Remote Deploy
+name: Deploy Marketing Frontend
 
 on:
   push:
-    branches: [ main ] # Spustí se při každém pushi do mainu
+    branches: [main]
+    paths:
+      - ".github/workflows/deploy.yaml"
+      - "package.json"
+      - "package-lock.json"
+      - "tsconfig.base.json"
+      - "gamified-physical-webapp/apps/marketing/**"
+      - "gamified-physical-webapp/packages/shared/**"
+
+concurrency:
+  group: marketing-deploy
+  cancel-in-progress: true
 
 jobs:
-  build:
-    runs-on: self-hosted 
+  deploy-marketing:
+    name: Build and Deploy Marketing
+    runs-on: self-hosted
+    env:
+      SITE_DOMAIN: dronegone.k209.cz
+      SITE_IP: 20.86.64.46
+      SITE_DIR: /var/www/dronegone.k209.cz
+      NGINX_SITE: /etc/nginx/sites-available/dronegone.k209.cz
+      ENABLE_HTTPS: "false"
+      CERTBOT_EMAIL: admin@dronegone.k209.cz
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Install and Build
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build marketing app
+        run: npm run build --workspace @eudis/marketing
+
+      - name: Ensure nginx and rsync are installed
         run: |
-          npm install
-          npm run dev
+          set -e
+          if ! command -v nginx >/dev/null 2>&1 || ! command -v rsync >/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install -y nginx rsync
+          fi
+
+      - name: Publish static files
+        run: |
+          set -e
+          sudo mkdir -p "$SITE_DIR"
+          sudo rsync -av --delete gamified-physical-webapp/apps/marketing/dist/ "$SITE_DIR/"
+
+      - name: Configure nginx vhost
+        run: |
+          set -e
+          sudo tee "$NGINX_SITE" >/dev/null <<EOF
+          server {
+              listen 80;
+              server_name $SITE_DOMAIN $SITE_IP;
+              root $SITE_DIR;
+              index index.html;
+
+              location / {
+                  try_files \$uri \$uri/ /index.html;
+              }
+          }
+          EOF
+
+          sudo ln -sfn "$NGINX_SITE" /etc/nginx/sites-enabled/dronegone.k209.cz
+          if [ -e /etc/nginx/sites-enabled/default ]; then
+            sudo rm -f /etc/nginx/sites-enabled/default
+          fi
+
+      - name: Reload nginx
+        run: |
+          set -e
+          sudo nginx -t
+          sudo systemctl enable nginx
+          sudo systemctl restart nginx
+
+      - name: Optional HTTPS via certbot
+        if: env.ENABLE_HTTPS == 'true'
+        run: |
+          set -e
+          if ! command -v certbot >/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install -y certbot python3-certbot-nginx
+          fi
+          sudo certbot --nginx -d "$SITE_DOMAIN" --non-interactive --agree-tos -m "$CERTBOT_EMAIL" --redirect
+          sudo nginx -t
+          sudo systemctl reload nginx
