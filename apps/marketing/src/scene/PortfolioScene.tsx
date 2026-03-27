@@ -1,5 +1,6 @@
-import { Environment, Float, KeyboardControls, PerspectiveCamera, Text, useKeyboardControls } from "@react-three/drei";
+import { Environment, Float, KeyboardControls, PerspectiveCamera, Stars, Text, useKeyboardControls } from "@react-three/drei";
 import { useFrame, useLoader, useThree } from "@react-three/fiber";
+import { EffectComposer, Bloom, Vignette } from "@react-three/postprocessing";
 import { CuboidCollider, Physics, RigidBody, type RapierRigidBody } from "@react-three/rapier";
 import { Suspense, useEffect, useRef, type MutableRefObject } from "react";
 import * as THREE from "three";
@@ -53,8 +54,8 @@ function SceneContents({ focusedProjectId, unlockedProjectIds, onProjectFocus, p
 
   return (
     <>
-      <color attach="background" args={["#061a29"]} />
-      <fog attach="fog" args={["#061a29", 42, 120]} />
+      <color attach="background" args={["#020c16"]} />
+      <fog attach="fog" args={["#020c16", 68, 200]} />
       <PerspectiveCamera makeDefault position={[0, 7, 12]} fov={42} />
 
       <ambientLight intensity={1.25} color="#d7ecff" />
@@ -79,6 +80,7 @@ function SceneContents({ focusedProjectId, unlockedProjectIds, onProjectFocus, p
       <pointLight position={[-15, 8, -15]} intensity={0.8} color="#7bd8ff" distance={36} />
 
       <Environment preset="sunset" />
+      <Stars radius={140} depth={40} count={5500} factor={5} saturation={0} fade speed={0.35} />
 
       <OceanSurface />
 
@@ -100,6 +102,17 @@ function SceneContents({ focusedProjectId, unlockedProjectIds, onProjectFocus, p
 
       <FollowCamera bodyRef={droneBody} headingRef={heading} />
       <GroundDetails />
+
+      <EffectComposer multisampling={0}>
+        <Bloom
+          intensity={1.6}
+          luminanceThreshold={0.12}
+          luminanceSmoothing={0.82}
+          mipmapBlur
+          radius={0.72}
+        />
+        <Vignette eskil={false} offset={0.28} darkness={0.72} />
+      </EffectComposer>
     </>
   );
 }
@@ -213,7 +226,7 @@ function Drone({ bodyRef, headingRef, paused }: { bodyRef: MutableRefObject<Rapi
 
         <mesh castShadow position={[0, 0.12, -0.08]}>
           <boxGeometry args={[0.16, 0.05, 2.3]} />
-          <meshStandardMaterial color="#67e8f9" emissive="#38bdf8" emissiveIntensity={0.6} metalness={1} roughness={0.1} toneMapped={false} />
+          <meshStandardMaterial color="#67e8f9" emissive="#38bdf8" emissiveIntensity={1.2} metalness={1} roughness={0.1} toneMapped={false} />
         </mesh>
 
         {/* Rocket nose */}
@@ -261,11 +274,11 @@ function Drone({ bodyRef, headingRef, paused }: { bodyRef: MutableRefObject<Rapi
         <group ref={thrusterGlow}>
           <mesh position={[-0.27, -0.05, 1.3]}>
             <sphereGeometry args={[0.12, 10, 8]} />
-            <meshStandardMaterial color="#8ddfff" emissive="#38bdf8" emissiveIntensity={1.1} toneMapped={false} />
+            <meshStandardMaterial color="#8ddfff" emissive="#38bdf8" emissiveIntensity={2.2} toneMapped={false} />
           </mesh>
           <mesh position={[0.27, -0.05, 1.3]}>
             <sphereGeometry args={[0.12, 10, 8]} />
-            <meshStandardMaterial color="#8ddfff" emissive="#38bdf8" emissiveIntensity={1.1} toneMapped={false} />
+            <meshStandardMaterial color="#8ddfff" emissive="#38bdf8" emissiveIntensity={2.2} toneMapped={false} />
           </mesh>
           <mesh position={[0, -0.02, 1.18]}>
             <boxGeometry args={[0.08, 0.08, 0.34]} />
@@ -334,11 +347,11 @@ function ProjectIsland({ active, unlocked, project, onFocus }: { active: boolean
         <meshStandardMaterial
           color="#00ff41"
           emissive={active ? "#00ff41" : "#1a3d2a"}
-          emissiveIntensity={active ? 0.6 : 0.12}
+          emissiveIntensity={active ? 1.2 : 0.2}
           metalness={0.7}
           roughness={0.2}
           transparent
-          opacity={0.15}
+          opacity={0.18}
           wireframe={false}
         />
       </mesh>
@@ -349,7 +362,7 @@ function ProjectIsland({ active, unlocked, project, onFocus }: { active: boolean
         <meshStandardMaterial
           color="#39ff14"
           emissive="#00ff41"
-          emissiveIntensity={0.8}
+          emissiveIntensity={1.4}
           metalness={0.9}
           roughness={0.1}
           toneMapped={false}
@@ -388,7 +401,7 @@ function ProjectIsland({ active, unlocked, project, onFocus }: { active: boolean
         <meshStandardMaterial
           color={project.accent}
           emissive={project.accent}
-          emissiveIntensity={active ? 0.7 : 0.3}
+          emissiveIntensity={active ? 1.4 : 0.55}
           metalness={0.8}
           roughness={0.15}
           toneMapped={false}
@@ -401,7 +414,7 @@ function ProjectIsland({ active, unlocked, project, onFocus }: { active: boolean
         <meshStandardMaterial
           color="#00ff41"
           emissive="#00ff41"
-          emissiveIntensity={0.5}
+          emissiveIntensity={0.9}
           metalness={0.9}
           roughness={0.2}
           wireframe={true}
@@ -521,13 +534,13 @@ function OceanSurface() {
       <mesh ref={waterRef} rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.34, 0]}>
         <planeGeometry args={[160, 160, 140, 140]} />
         <meshStandardMaterial
-          color="#176a8c"
-          roughness={0.52}
+          color="#1a8cb5"
+          roughness={0.45}
           metalness={0.06}
-          emissive="#0d4f73"
-          emissiveIntensity={0.12}
+          emissive="#0d6a99"
+          emissiveIntensity={0.28}
           transparent
-          opacity={0.9}
+          opacity={0.92}
           side={THREE.DoubleSide}
         />
       </mesh>
@@ -571,44 +584,19 @@ function BoundaryWalls() {
         {/* Neon boundary glow bars */}
         <mesh position={[-arenaHalf, 1.8, 0]}>
           <boxGeometry args={[1.2, 3.6, arenaHalf * 2 + 0.8]} />
-          <meshStandardMaterial 
-            color="#00ff41" 
-            emissive="#00ff41"
-            emissiveIntensity={0.4}
-            metalness={0.9}
-            roughness={0.1}
-            wireframe={false}
-          />
+          <meshStandardMaterial color="#00ff41" emissive="#00ff41" emissiveIntensity={1.1} metalness={0.9} roughness={0.1} toneMapped={false} />
         </mesh>
         <mesh position={[arenaHalf, 1.8, 0]}>
           <boxGeometry args={[1.2, 3.6, arenaHalf * 2 + 0.8]} />
-          <meshStandardMaterial 
-            color="#00ff41" 
-            emissive="#00ff41"
-            emissiveIntensity={0.4}
-            metalness={0.9}
-            roughness={0.1}
-          />
+          <meshStandardMaterial color="#00ff41" emissive="#00ff41" emissiveIntensity={1.1} metalness={0.9} roughness={0.1} toneMapped={false} />
         </mesh>
         <mesh position={[0, 1.8, -arenaHalf]}>
           <boxGeometry args={[arenaHalf * 2 + 0.8, 3.6, 1.2]} />
-          <meshStandardMaterial 
-            color="#00ff41" 
-            emissive="#00ff41"
-            emissiveIntensity={0.4}
-            metalness={0.9}
-            roughness={0.1}
-          />
+          <meshStandardMaterial color="#00ff41" emissive="#00ff41" emissiveIntensity={1.1} metalness={0.9} roughness={0.1} toneMapped={false} />
         </mesh>
         <mesh position={[0, 1.8, arenaHalf]}>
           <boxGeometry args={[arenaHalf * 2 + 0.8, 3.6, 1.2]} />
-          <meshStandardMaterial 
-            color="#00ff41" 
-            emissive="#00ff41"
-            emissiveIntensity={0.4}
-            metalness={0.9}
-            roughness={0.1}
-          />
+          <meshStandardMaterial color="#00ff41" emissive="#00ff41" emissiveIntensity={1.1} metalness={0.9} roughness={0.1} toneMapped={false} />
         </mesh>
       </RigidBody>
     </>

@@ -1,5 +1,6 @@
 import { useState, useCallback } from "react";
 import { Canvas } from "@react-three/fiber";
+import * as THREE from "three";
 import { PortfolioScene } from "./scene/PortfolioScene";
 import { IslandChallenge } from "./scene/IslandChallenge";
 import { projects } from "./scene/projects";
@@ -54,7 +55,7 @@ export function App() {
 
   return (
     <main className="app-shell">
-      <Canvas dpr={[1, 2]} shadows gl={{ antialias: true }}>
+      <Canvas dpr={[1, 2]} shadows gl={{ antialias: true, toneMapping: THREE.ACESFilmicToneMapping, toneMappingExposure: 1.1 }}>
         <PortfolioScene
           focusedProjectId={focusedProjectId}
           unlockedProjectIds={unlockedProjectIds}
