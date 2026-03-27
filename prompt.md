@@ -2,19 +2,22 @@
 
 You are continuing work in the repository `EUDIS-Hackathon-CZE`.
 
-Your job is to continue implementation work with strong focus on visuals and interaction quality in `apps/marketing`, while avoiding regressions in controls/challenge flow.
+Your job is to continue implementation work with strong focus on visuals and interaction quality in `gamified-physical-webapp/apps/marketing`, while avoiding regressions in controls/challenge flow.
 
 ## 1. Repository Overview
 
 This is a monorepo with multiple apps:
 
-- `apps/web`: tactical dashboard (main product dashboard)
-- `apps/bridge`: telemetry bridge API (MATLAB integration)
-- `apps/marketing`: immersive 3D marketing/demo experience (current active focus)
-- `packages/shared`: shared contracts/types
-- `dashboard/`: legacy prototype
+- `gamified-physical-webapp/apps/web`: tactical dashboard (main product dashboard)
+- `gamified-physical-webapp/apps/bridge`: telemetry bridge API (MATLAB integration)
+- `gamified-physical-webapp/apps/marketing`: immersive 3D marketing/demo experience (current active focus)
+- `gamified-physical-webapp/packages/shared`: shared contracts/types
+- `gamified-physical-webapp/dashboard/`: legacy prototype
+- `matlab-code-outputs/`: MATLAB code outputs
+- `simulink-output-1/`: Simulink output project
+- `simulink-output-2/`: Simulink output project
 
-Top-level README mostly describes `apps/web` + `apps/bridge` telemetry flow. Current active UX/graphics iteration is happening in `apps/marketing`.
+Top-level README mostly describes `gamified-physical-webapp/apps/web` + `gamified-physical-webapp/apps/bridge` telemetry flow. Current active UX/graphics iteration is happening in `gamified-physical-webapp/apps/marketing`.
 
 ## 2. Current Priority
 
@@ -26,7 +29,7 @@ Secondary constraints:
 - Keep challenge playable (not overwhelming)
 - Avoid modal/page scrolling UX issues
 
-## 3. Current `apps/marketing` State
+## 3. Current `gamified-physical-webapp/apps/marketing` State
 
 ### Rendering stack
 
@@ -38,11 +41,11 @@ Secondary constraints:
 
 ### Core files
 
-- `apps/marketing/src/App.tsx`
-- `apps/marketing/src/scene/PortfolioScene.tsx`
-- `apps/marketing/src/scene/IslandChallenge.tsx`
-- `apps/marketing/src/scene/projects.ts`
-- `apps/marketing/src/styles.css`
+- `gamified-physical-webapp/apps/marketing/src/App.tsx`
+- `gamified-physical-webapp/apps/marketing/src/scene/PortfolioScene.tsx`
+- `gamified-physical-webapp/apps/marketing/src/scene/IslandChallenge.tsx`
+- `gamified-physical-webapp/apps/marketing/src/scene/projects.ts`
+- `gamified-physical-webapp/apps/marketing/src/styles.css`
 
 ### Implemented scene/gameplay behavior
 
@@ -73,7 +76,7 @@ Secondary constraints:
 
 ### Dependencies updated
 
-- `apps/marketing/package.json` includes `@react-three/postprocessing`
+- `gamified-physical-webapp/apps/marketing/package.json` includes `@react-three/postprocessing`
 
 ## 5. Challenge Status (important: do not regress)
 
@@ -103,7 +106,7 @@ Maintain this playability unless user asks to rebalance.
 
 ## 8. Build and Verification
 
-From `apps/marketing`:
+From `gamified-physical-webapp/apps/marketing`:
 
 ```bash
 npm run build
@@ -126,14 +129,14 @@ Use this order unless user changes direction:
 If user asks whether they can upload files: yes.
 Useful assets:
 
-- HDRI files (`.hdr`/`.exr`) in `apps/marketing/public/`
-- Textures (`.png`, `.jpg`) in `apps/marketing/src/images/`
+- HDRI files (`.hdr`/`.exr`) in `gamified-physical-webapp/apps/marketing/public/`
+- Textures (`.png`, `.jpg`) in `gamified-physical-webapp/apps/marketing/src/images/`
 
 Then wire these into scene materials/environment.
 
 ## 11. Operational Instructions for You
 
-- Focus edits on `apps/marketing`
+- Focus edits on `gamified-physical-webapp/apps/marketing`
 - Do not refactor unrelated monorepo apps unless requested
 - Prefer incremental, testable visual changes
 - After each substantial change, run build and confirm no regressions

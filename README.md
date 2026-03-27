@@ -8,11 +8,19 @@ and software integration experiments only.
 
 ## Professional Stack (Monorepo)
 
-This project is structured as a TypeScript monorepo:
+This repository is organized around four top-level subprojects:
 
-- `apps/web`: React + Vite tactical dashboard (desktop/tablet)
-- `apps/bridge`: Node.js telemetry bridge API for MATLAB integration
-- `packages/shared`: shared data contracts/types used by web and bridge
+- `gamified-physical-webapp/`: active TypeScript monorepo for the dashboard, bridge, marketing experience, shared contracts, simulator, and legacy prototype
+- `matlab-code-outputs/`: MATLAB-generated code and bridge-side integration artifacts
+- `simulink-output-1/`: reserved for Simulink-generated outputs
+- `simulink-output-2/`: reserved for additional Simulink-generated outputs
+
+The active application stack lives inside `gamified-physical-webapp/`:
+
+- `gamified-physical-webapp/apps/web`: React + Vite tactical dashboard (desktop/tablet)
+- `gamified-physical-webapp/apps/bridge`: Node.js telemetry bridge API for MATLAB integration
+- `gamified-physical-webapp/apps/marketing`: React + Vite immersive 3D marketing/demo experience
+- `gamified-physical-webapp/packages/shared`: shared data contracts/types used by web and bridge
 
 Core goals:
 
@@ -43,6 +51,13 @@ Install dependencies:
 ```bash
 npm install
 ```
+
+Repository layout notes:
+
+- Run root scripts from the repository root
+- Daily product work happens in `gamified-physical-webapp/`
+- MATLAB handoff artifacts belong in `matlab-code-outputs/`
+- The two `simulink-output-*` folders are reserved for generated Simulink deliverables
 
 Run bridge API (terminal 1):
 
@@ -167,5 +182,5 @@ The web dashboard now includes a bottom-right mini panel with:
 
 ## Legacy Prototype
 
-The original static prototype remains in `dashboard/` for reference.
-Active development should continue in `apps/web` and `apps/bridge`.
+The original static prototype remains in `gamified-physical-webapp/dashboard/` for reference.
+Active development should continue in `gamified-physical-webapp/apps/web`, `gamified-physical-webapp/apps/bridge`, and `gamified-physical-webapp/apps/marketing`.

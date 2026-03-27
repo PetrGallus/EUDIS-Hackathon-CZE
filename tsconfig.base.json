@@ -2,7 +2,7 @@
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {
-      "@eudis/shared": ["packages/shared/src/index.ts"]
+      "@eudis/shared": ["gamified-physical-webapp/packages/shared/src/index.ts"]
     },
     "target": "ES2022",
     "module": "ESNext",
