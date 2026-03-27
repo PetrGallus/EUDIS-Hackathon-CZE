@@ -1,0 +1,273 @@
+:root {
+  --bg: #0a1219;
+  --bg2: #0e2230;
+  --panel: rgba(8, 19, 28, 0.78);
+  --border: rgba(157, 198, 217, 0.24);
+  --text: #e8f2f8;
+  --soft: #9bb8c9;
+  --ok: #3fd6b6;
+  --warn: #ffbf66;
+  --bad: #ff7d7d;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  min-height: 100%;
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  color: var(--text);
+  background:
+    radial-gradient(circle at 15% 10%, rgba(63, 214, 182, 0.13), transparent 40%),
+    radial-gradient(circle at 85% 85%, rgba(127, 171, 255, 0.16), transparent 42%),
+    linear-gradient(145deg, var(--bg), var(--bg2));
+}
+
+.shell {
+  max-width: 1260px;
+  margin: 0 auto;
+  padding: 1rem 1rem 7.5rem;
+}
+
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: end;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.eyebrow {
+  margin: 0;
+  font-size: 0.8rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--soft);
+}
+
+h1,
+h2 {
+  margin: 0;
+}
+
+.selectors {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+label {
+  display: grid;
+  gap: 0.22rem;
+  color: var(--soft);
+  font-size: 0.85rem;
+}
+
+select,
+button {
+  border: 1px solid var(--border);
+  background: rgba(8, 17, 26, 0.82);
+  color: var(--text);
+  border-radius: 8px;
+  padding: 0.45rem 0.65rem;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  gap: 0.9rem;
+}
+
+.panel {
+  border: 1px solid var(--border);
+  background: var(--panel);
+  border-radius: 14px;
+  padding: 0.8rem;
+}
+
+.empty-telemetry p {
+  color: var(--soft);
+  margin: 0.4rem 0;
+}
+
+.status-grid {
+  margin-top: 0.7rem;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(220px, 1fr));
+  gap: 0.65rem;
+}
+
+.status {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.55rem;
+  display: grid;
+  gap: 0.2rem;
+}
+
+.status.ok {
+  border-color: color-mix(in srgb, var(--ok) 55%, var(--border));
+}
+
+.status.warn {
+  border-color: color-mix(in srgb, var(--warn) 55%, var(--border));
+}
+
+.status.bad {
+  border-color: color-mix(in srgb, var(--bad) 65%, var(--border));
+  background: rgba(110, 20, 24, 0.2);
+}
+
+.status.neutral {
+  border-color: var(--border);
+}
+
+.status span,
+small {
+  color: var(--soft);
+}
+
+.row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.view-box {
+  margin-top: 0.75rem;
+  border: 1px dashed var(--border);
+  border-radius: 10px;
+  padding: 0.7rem;
+}
+
+.view-title {
+  margin-top: 0;
+  color: var(--soft);
+}
+
+.kv,
+.notes {
+  margin: 0.75rem 0 0;
+  padding-left: 1rem;
+}
+
+.kv li,
+.notes li {
+  margin: 0.28rem 0;
+}
+
+.kv span {
+  color: var(--soft);
+  margin-right: 0.6rem;
+}
+
+.matlab-mini {
+  position: fixed;
+  right: 0.9rem;
+  bottom: 0.9rem;
+  width: min(540px, calc(100vw - 1.8rem));
+  border: 1px solid var(--border);
+  background: rgba(6, 15, 22, 0.93);
+  border-radius: 14px;
+  padding: 0.75rem;
+  box-shadow: 0 14px 38px rgba(0, 0, 0, 0.42);
+  backdrop-filter: blur(7px);
+}
+
+.matlab-mini h3,
+.matlab-mini h4 {
+  margin: 0;
+}
+
+.matlab-mini h4 {
+  margin-top: 0.55rem;
+  font-size: 0.92rem;
+}
+
+.mini-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.55rem;
+}
+
+.pill {
+  border-radius: 999px;
+  font-size: 0.78rem;
+  padding: 0.28rem 0.55rem;
+  border: 1px solid var(--border);
+}
+
+.pill.ok {
+  border-color: color-mix(in srgb, var(--ok) 60%, var(--border));
+}
+
+.pill.warn {
+  border-color: color-mix(in srgb, var(--warn) 60%, var(--border));
+}
+
+.pill.bad {
+  border-color: color-mix(in srgb, var(--bad) 70%, var(--border));
+  background: rgba(110, 20, 24, 0.2);
+}
+
+.mini-stats {
+  list-style: none;
+  padding: 0;
+  margin: 0.65rem 0 0;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.mini-stats li {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  font-size: 0.84rem;
+}
+
+.mini-stats span {
+  color: var(--soft);
+}
+
+.mini-log {
+  margin: 0.5rem 0 0;
+  max-height: 128px;
+  overflow: auto;
+  padding-left: 1rem;
+  color: var(--soft);
+}
+
+.mini-log li {
+  margin: 0.25rem 0;
+  font-size: 0.8rem;
+}
+
+.mini-log strong {
+  color: var(--text);
+}
+
+@media (max-width: 980px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+
+  .topbar {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .status-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .matlab-mini {
+    width: calc(100vw - 1.4rem);
+    right: 0.7rem;
+    bottom: 0.7rem;
+  }
+}

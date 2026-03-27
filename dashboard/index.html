@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Aegis Pilot Dashboard (Simulation)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="bg-grid" aria-hidden="true"></div>
+  <div class="shell">
+    <header class="topbar reveal">
+      <div>
+        <p class="kicker">Training / Non-Weapon Mode</p>
+        <h1>Aegis Pilot Console</h1>
+      </div>
+      <div class="topbar-metrics">
+        <div class="chip" id="simClock">T+00:00:00</div>
+        <div class="chip" id="linkState">Data Link: Stable</div>
+        <div class="chip warning" id="alertState">Alerts: 0</div>
+      </div>
+    </header>
+
+    <main class="layout">
+      <section class="panel map-panel reveal" style="--delay: 80ms">
+        <div class="panel-head">
+          <h2>Situational Map</h2>
+          <div class="toggle-group" role="group" aria-label="View mode">
+            <button class="active" data-view="2d">2D</button>
+            <button data-view="3d">Pseudo 3D</button>
+            <button data-view="thermal">Thermal Overlay</button>
+          </div>
+        </div>
+        <div class="map-wrap" id="mapWrap">
+          <canvas id="radarCanvas" width="980" height="560" aria-label="Tactical map visualization"></canvas>
+          <div class="legend">
+            <span><i class="dot ownship"></i> Ownship</span>
+            <span><i class="dot track"></i> Tracked object</span>
+            <span><i class="dot zone"></i> Safety ring</span>
+          </div>
+        </div>
+      </section>
+
+      <aside class="stack">
+        <section class="panel reveal" style="--delay: 140ms">
+          <h2>Flight Telemetry</h2>
+          <ul class="kv" id="telemetryList"></ul>
+        </section>
+
+        <section class="panel reveal" style="--delay: 180ms">
+          <h2>Track Classification</h2>
+          <ul class="kv" id="trackList"></ul>
+          <div class="confidence-wrap">
+            <span>Confidence</span>
+            <div class="bar"><div id="confidenceBar"></div></div>
+            <span id="confidenceLabel">0%</span>
+          </div>
+        </section>
+
+        <section class="panel reveal" style="--delay: 220ms">
+          <div class="panel-head">
+            <h2>Event Timeline</h2>
+            <button id="clearLogBtn" class="ghost">Clear</button>
+          </div>
+          <ol id="eventLog" class="event-log"></ol>
+        </section>
+      </aside>
+    </main>
+  </div>
+
+  <script src="script.js" type="module"></script>
+</body>
+</html>

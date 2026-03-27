@@ -1,0 +1,33 @@
+{
+  "scenarioId": "sim-uav-ops-001",
+  "note": "Synthetic telemetry for non-weapon operator training.",
+  "sampleRateHz": 1,
+  "ownship": {
+    "id": "OWN-01",
+    "lat": 49.1934,
+    "lon": 16.6089,
+    "altitudeM": 112,
+    "speedMps": 24,
+    "headingDeg": 42,
+    "batteryPct": 91,
+    "uplinkMs": 38
+  },
+  "tracks": [
+    {
+      "id": "SIM-TRACK-ALPHA",
+      "classLabel": "Unknown UAV",
+      "confidence": 0.34,
+      "distanceM": 680,
+      "relativeBearingDeg": 77,
+      "thermalDeltaC": 5.2,
+      "speedMps": 19,
+      "riskLevel": "Monitor"
+    }
+  ],
+  "events": [
+    {
+      "severity": "info",
+      "message": "Simulation stream initialized"
+    }
+  ]
+}

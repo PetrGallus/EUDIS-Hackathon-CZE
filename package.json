@@ -1,0 +1,16 @@
+{
+  "name": "eudis-uav-platform",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:web": "npm --workspace @eudis/web run dev",
+    "dev:marketing": "npm --workspace @eudis/marketing run dev",
+    "dev:bridge": "npm --workspace @eudis/bridge run dev",
+    "sim:matlab": "node tools/matlab-simulator/push-matlab-stream.mjs",
+    "build": "npm run build --workspaces",
+    "typecheck": "npm run typecheck --workspaces"
+  }
+}
