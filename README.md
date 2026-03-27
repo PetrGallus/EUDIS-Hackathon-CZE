@@ -11,7 +11,7 @@ and software integration experiments only.
 This repository is organized around four top-level subprojects:
 
 - `gamified-physical-webapp/`: active TypeScript monorepo for the dashboard, bridge, marketing experience, shared contracts, simulator, and legacy prototype
-- `matlab-code-outputs/`: MATLAB-generated code and bridge-side integration artifacts
+- `matlab-code-outputs/`: MATLAB simulation, control, and bridge utilities (real quadrotor control/model code)
 - `simulink-output-1/`: reserved for Simulink-generated outputs
 - `simulink-output-2/`: reserved for additional Simulink-generated outputs
 
@@ -28,6 +28,21 @@ Core goals:
 - Cluster-based operator workflow (select locality cluster, then drone)
 - Resilience indicators for contested/jammed environments
 - Stable contracts for future C2 integration
+
+## MATLAB Subproject (Real Content)
+
+`matlab-code-outputs/` now contains actual MATLAB-side control and simulation work, not placeholders.
+
+It includes:
+
+- 6-DoF quadrotor simulation entrypoint (`simulateQuadMinimalICAO.m`)
+- Control logic building blocks (`ControlSystem.m`, `desiredAttitudeFromAccel.m`, `eulerPDToMoments.m`)
+- Linear and nonlinear control allocation (`allocateQuadXLinear.m`, `allocateQuadXNonlinearIterative.m`)
+- Rotation/math helpers (`Rx.m`, `Ry.m`, `Rz.m`, `Hat.m`, `Vee.m`)
+- UDP/JSON send utility for integration tests (`JSON_Send.m`)
+- Bridge diagnostics in `matlab-code-outputs/bridge/` (`interceptor_bridge.c`, compiled receiver, `udp_test.py`)
+
+Use this subproject as the algorithm + controls workspace, then connect produced telemetry to the Node bridge and dashboard in `gamified-physical-webapp/`.
 
 ## Contested-Environment Features (Safe IT Scope)
 
