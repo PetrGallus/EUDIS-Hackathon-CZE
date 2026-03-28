@@ -57,6 +57,8 @@ type Messages = {
     flightBody: string;
     targetTitle: string;
     targetBody: string;
+    simulationTitle: string;
+    simulationBody: string;
     introLabel: string;
     introTitle: string;
     introBody: string;
@@ -97,6 +99,14 @@ type Messages = {
     target: string;
     checkpoint: string;
     shahedTarget: string;
+    simulationPoint: string;
+    boardTitle: string;
+    phase1Title: string;
+    phase1Body: string;
+    phase2Title: string;
+    phase2Body: string;
+    phase3Title: string;
+    phase3Body: string;
   };
 };
 
@@ -165,6 +175,8 @@ const messagesByLocale: Record<Locale, Messages> = {
       flightBody: "Leť s intercept dronem po červené přerušované trase k mezibodu. Tam dostaneš rychlý briefing ke hrozbě Shahed.",
       targetTitle: "Doleť k cíli",
       targetBody: "Pokračuj z checkpointu ke středu mapy. U centrálního Shahedu se odemkne poslední briefing a pak můžeš začít objevovat ostrovy.",
+      simulationTitle: "Ještě jeden krok: demonstrační zóna",
+      simulationBody: "Teď se po červené trase přesuň do simulační oblasti. Na zemi uvidíš 3 fáze, které jednoduše vysvětlují použití intercept dronu.",
       introLabel: "Tutorial // Intercept onboarding",
       introTitle: "Letíš s intercept dronem",
       introBody: "Na tomhle webu se nepohybuješ kurzorem po kartách. Přímo pilotuješ intercept dron, který tě provede mezi hrozbou uprostřed a ostrovy, kde jsou ukryté části projektu.",
@@ -205,6 +217,14 @@ const messagesByLocale: Record<Locale, Messages> = {
       target: "CÍL",
       checkpoint: "CHECKPOINT",
       shahedTarget: "SHAHED TARGET",
+      simulationPoint: "SIMULACE",
+      boardTitle: "INTERCEPT SCÉNÁŘ // 3 FÁZE",
+      phase1Title: "1) Detekce",
+      phase1Body: "Obranný dron hlídkuje ve výšce a kamerou zachytí útočný Shahed dřív, než vstoupí nad město.",
+      phase2Title: "2) Navedení",
+      phase2Body: "Systém stabilizuje stopu cíle, vypočítá intercept trajektorii a navede obranný dron do zásahového okna.",
+      phase3Title: "3) Eliminace",
+      phase3Body: "Útočný dron je neutralizován před dopadem na zastavěnou oblast. Město zůstává bez zásahu.",
     },
   },
   en: {
@@ -262,6 +282,8 @@ const messagesByLocale: Record<Locale, Messages> = {
       flightBody: "Fly the interceptor drone along the red dashed route to the waypoint. There you will get a short briefing on the Shahed threat.",
       targetTitle: "Close on target",
       targetBody: "Continue from the checkpoint to the center of the map. At the central Shahed you will unlock the final briefing and then start exploring the islands.",
+      simulationTitle: "One more step: simulation zone",
+      simulationBody: "Now follow the red route to the simulation area. On the ground you will see 3 phases that explain interceptor drone usage in a simple flow.",
       introLabel: "Tutorial // Intercept onboarding",
       introTitle: "You are flying an interceptor drone",
       introBody: "This website is not navigated by clicking static cards. You directly pilot an interceptor drone that guides you between the threat in the center and the islands hiding parts of the project.",
@@ -302,6 +324,14 @@ const messagesByLocale: Record<Locale, Messages> = {
       target: "TARGET",
       checkpoint: "CHECKPOINT",
       shahedTarget: "SHAHED TARGET",
+      simulationPoint: "SIMULATION",
+      boardTitle: "INTERCEPT SCENARIO // 3 PHASES",
+      phase1Title: "1) Detection",
+      phase1Body: "The defense drone loiters at altitude and detects the incoming Shahed before it enters the city area.",
+      phase2Title: "2) Guidance",
+      phase2Body: "The system locks target track, computes an intercept path, and guides the defensive drone into the engagement window.",
+      phase3Title: "3) Elimination",
+      phase3Body: "The hostile drone is neutralized before impact on urban buildings. City infrastructure remains protected.",
     },
   },
   uk: {
@@ -359,6 +389,8 @@ const messagesByLocale: Record<Locale, Messages> = {
       flightBody: "Лети перехоплювачем уздовж червоної пунктирної лінії до контрольної точки. Там буде короткий брифінг про загрозу Shahed.",
       targetTitle: "Підійди до цілі",
       targetBody: "Після чекпоінта рухайся до центру мапи. Біля центрального Shahed відкриється фінальний брифінг, а потім ти зможеш досліджувати острови.",
+      simulationTitle: "Ще один крок: зона симуляції",
+      simulationBody: "Тепер рухайся червоною трасою до зони симуляції. На землі побачиш 3 фази, що просто пояснюють логіку перехоплення.",
       introLabel: "Tutorial // Intercept onboarding",
       introTitle: "Ти керуєш дроном-перехоплювачем",
       introBody: "Цей сайт не про кліки по статичних картках. Ти напряму керуєш дроном, який проводить тебе між загрозою в центрі та островами з прихованими частинами проєкту.",
@@ -399,6 +431,14 @@ const messagesByLocale: Record<Locale, Messages> = {
       target: "ЦІЛЬ",
       checkpoint: "ЧЕКПОІНТ",
       shahedTarget: "ЦІЛЬ SHAHED",
+      simulationPoint: "СИМУЛЯЦІЯ",
+      boardTitle: "СЦЕНАРІЙ ПЕРЕХОПЛЕННЯ // 3 ФАЗИ",
+      phase1Title: "1) Виявлення",
+      phase1Body: "Оборонний дрон патрулює на висоті та виявляє Shahed до входу в міську зону.",
+      phase2Title: "2) Наведення",
+      phase2Body: "Система фіксує ціль, рахує траєкторію перехоплення та веде дрон у вікно ураження.",
+      phase3Title: "3) Нейтралізація",
+      phase3Body: "Ворожий дрон знищено до удару по забудові. Місто залишається захищеним.",
     },
   },
 };

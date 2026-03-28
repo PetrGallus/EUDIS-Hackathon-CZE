@@ -748,6 +748,13 @@ tr.row-locked .col-unlocks {
   font-size: clamp(1.6rem, 3vw, 2.4rem);
 }
 
+.tutorial-logo {
+  width: min(210px, 58vw);
+  display: block;
+  margin: 0 auto 0.9rem auto;
+  filter: drop-shadow(0 8px 20px rgba(0, 0, 0, 0.4));
+}
+
 .tutorial-panel p {
   margin: 0.65rem 0;
   color: #d2dcff;

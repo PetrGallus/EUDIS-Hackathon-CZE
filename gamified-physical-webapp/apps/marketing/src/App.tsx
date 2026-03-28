@@ -7,10 +7,12 @@ import { IslandChallenge } from "./scene/IslandChallenge";
 import { getProjects } from "./scene/projects";
 import "./styles.css";
 
-type TutorialStage = "intro" | "flight" | "checkpoint" | "target" | "outro" | "done";
+type TutorialStage = "intro" | "flight" | "checkpoint" | "target" | "simulation" | "outro" | "done";
 
-const tutorialCheckpoint: [number, number, number] = [-6, 1.25, -6];
+const tutorialSpawn: [number, number, number] = [-30, 1.25, -24];
+const tutorialCheckpoint: [number, number, number] = [-16, 1.25, -15];
 const tutorialTarget: [number, number, number] = [0, 1.25, 0];
+const tutorialSimulationPoint: [number, number, number] = [20, 1.25, -13];
 
 export function App() {
   const { locale, resolvedLocale, messages, setLocale } = useI18n();
@@ -24,7 +26,14 @@ export function App() {
   const localeChosen = locale !== null;
   const tutorialActive = localeChosen && tutorialStage !== "done";
   const tutorialBlocking = tutorialStage === "intro" || tutorialStage === "checkpoint" || tutorialStage === "outro";
-  const tutorialGuidanceMode = tutorialStage === "flight" ? "checkpoint" : tutorialStage === "target" ? "target" : "inactive";
+  const tutorialGuidanceMode =
+    tutorialStage === "flight"
+      ? "checkpoint"
+      : tutorialStage === "target"
+        ? "target"
+        : tutorialStage === "simulation"
+          ? "simulation"
+          : "inactive";
 
   const handleProjectFocus = useCallback(
     (projectId: string | null) => {
@@ -80,8 +89,10 @@ export function App() {
           paused={isPaused}
           tutorialActive={tutorialActive}
           tutorialGuidanceMode={tutorialGuidanceMode}
+          tutorialSpawn={tutorialSpawn}
           tutorialCheckpoint={tutorialCheckpoint}
           tutorialTarget={tutorialTarget}
+          tutorialSimulation={tutorialSimulationPoint}
           onTutorialCheckpointReach={() => {
             if (tutorialStage === "flight") {
               setTutorialStage("checkpoint");
@@ -89,13 +100,18 @@ export function App() {
           }}
           onTutorialTargetReach={() => {
             if (tutorialStage === "target") {
+              setTutorialStage("simulation");
+            }
+          }}
+          onTutorialSimulationReach={() => {
+            if (tutorialStage === "simulation") {
               setTutorialStage("outro");
             }
           }}
         />
       </Canvas>
 
-      {tutorialActive && (tutorialStage === "flight" || tutorialStage === "target") ? (
+      {tutorialActive && (tutorialStage === "flight" || tutorialStage === "target" || tutorialStage === "simulation") ? (
         <aside className="tutorial-escort-card">
           <p className="label">{messages.tutorial.label}</p>
           {tutorialStage === "flight" ? (
@@ -103,10 +119,15 @@ export function App() {
               <h2>{messages.tutorial.flightTitle}</h2>
               <p>{messages.tutorial.flightBody}</p>
             </>
-          ) : (
+          ) : tutorialStage === "target" ? (
             <>
               <h2>{messages.tutorial.targetTitle}</h2>
               <p>{messages.tutorial.targetBody}</p>
+            </>
+          ) : (
+            <>
+              <h2>{messages.tutorial.simulationTitle}</h2>
+              <p>{messages.tutorial.simulationBody}</p>
             </>
           )}
         </aside>
@@ -306,6 +327,7 @@ export function App() {
       {localeChosen && tutorialStage === "intro" ? (
         <div className="tutorial-overlay">
           <div className="tutorial-panel tutorial-panel-intro">
+            <img className="tutorial-logo" src="/Logo.png" alt="DroneGone team logo" />
             <p className="label">{messages.tutorial.introLabel}</p>
             <h2>{messages.tutorial.introTitle}</h2>
             <p>{messages.tutorial.introBody}</p>

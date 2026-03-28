@@ -2,14 +2,20 @@ import { Environment, Float, KeyboardControls, PerspectiveCamera, Stars, Text, u
 import { useFrame, useThree } from "@react-three/fiber";
 import { EffectComposer, Bloom, Vignette } from "@react-three/postprocessing";
 import { CuboidCollider, Physics, RigidBody, type RapierRigidBody } from "@react-three/rapier";
-import { Suspense, useEffect, useMemo, useRef, type MutableRefObject } from "react";
+import { Suspense, useEffect, useMemo, useRef, type MutableRefObject, type ReactNode } from "react";
 import * as THREE from "three";
 import { useI18n } from "../i18n";
 import { getProjects, type ProjectNode } from "./projects";
 import droneModelUrl from "../images/drone.glb?url";
 import islandModelUrl from "../images/island.glb?url";
+import islandCastleModelUrl from "../images/island_castle.glb?url";
+import industrialAntennaModelUrl from "../images/industrial_antenna.glb?url";
 import waterCubeModelUrl from "../images/water_cube.glb?url";
 import shahedModelUrl from "../images/shahed_13.glb?url";
+import shahedAnimatedModelUrl from "../images/shahed_for_animation.glb?url";
+import tutorRobotOneModelUrl from "../images/tutor_robot_1.glb?url";
+import tutorRobotTwoModelUrl from "../images/tutor_robot_2.glb?url";
+import bannerImageUrl from "../images/banner (1).png";
 
 type ControlName = "forward" | "backward" | "leftward" | "rightward" | "boost";
 
@@ -19,11 +25,14 @@ type PortfolioSceneProps = {
   onProjectFocus: (projectId: string | null) => void;
   paused: boolean;
   tutorialActive: boolean;
-  tutorialGuidanceMode: "inactive" | "checkpoint" | "target";
+  tutorialGuidanceMode: "inactive" | "checkpoint" | "target" | "simulation";
+  tutorialSpawn: [number, number, number];
   tutorialCheckpoint: [number, number, number];
   tutorialTarget: [number, number, number];
+  tutorialSimulation: [number, number, number];
   onTutorialCheckpointReach: () => void;
   onTutorialTargetReach: () => void;
+  onTutorialSimulationReach: () => void;
 };
 
 const controls = [
@@ -51,6 +60,58 @@ function setRepeatMap(texture: THREE.Texture, repeat = 1) {
   texture.wrapS = THREE.RepeatWrapping;
   texture.wrapT = THREE.RepeatWrapping;
   texture.repeat.set(repeat, repeat);
+}
+
+function prepareImportedModel(
+  source: THREE.Object3D,
+  {
+    targetSize,
+    lift = 0,
+    envMapIntensity = 0.55,
+    roughnessDelta = 0,
+    metalnessDelta = 0,
+  }: {
+    targetSize: number;
+    lift?: number;
+    envMapIntensity?: number;
+    roughnessDelta?: number;
+    metalnessDelta?: number;
+  }
+) {
+  const root = source.clone(true);
+
+  root.traverse((obj: THREE.Object3D) => {
+    if (!(obj instanceof THREE.Mesh)) {
+      return;
+    }
+
+    obj.castShadow = true;
+    obj.receiveShadow = true;
+
+    const materials = Array.isArray(obj.material) ? obj.material : [obj.material];
+    materials.forEach((mat) => {
+      if (mat instanceof THREE.MeshStandardMaterial || mat instanceof THREE.MeshPhysicalMaterial) {
+        mat.envMapIntensity = envMapIntensity;
+        mat.roughness = THREE.MathUtils.clamp(mat.roughness + roughnessDelta, 0, 1);
+        mat.metalness = THREE.MathUtils.clamp(mat.metalness + metalnessDelta, 0, 1);
+      }
+    });
+  });
+
+  const bounds = new THREE.Box3().setFromObject(root);
+  const size = new THREE.Vector3();
+  const center = new THREE.Vector3();
+  bounds.getSize(size);
+  bounds.getCenter(center);
+  root.position.sub(center);
+
+  const maxDim = Math.max(size.x, size.y, size.z, 0.001);
+  root.scale.setScalar(targetSize / maxDim);
+
+  const placedBounds = new THREE.Box3().setFromObject(root);
+  root.position.y -= placedBounds.min.y - lift;
+
+  return root;
 }
 
 const waterVertexShader = `
@@ -137,10 +198,13 @@ export function PortfolioScene({
   paused,
   tutorialActive,
   tutorialGuidanceMode,
+  tutorialSpawn,
   tutorialCheckpoint,
   tutorialTarget,
+  tutorialSimulation,
   onTutorialCheckpointReach,
   onTutorialTargetReach,
+  onTutorialSimulationReach,
 }: PortfolioSceneProps) {
   return (
     <KeyboardControls map={controls}>
@@ -152,10 +216,13 @@ export function PortfolioScene({
           paused={paused}
           tutorialActive={tutorialActive}
           tutorialGuidanceMode={tutorialGuidanceMode}
+          tutorialSpawn={tutorialSpawn}
           tutorialCheckpoint={tutorialCheckpoint}
           tutorialTarget={tutorialTarget}
+          tutorialSimulation={tutorialSimulation}
           onTutorialCheckpointReach={onTutorialCheckpointReach}
           onTutorialTargetReach={onTutorialTargetReach}
+          onTutorialSimulationReach={onTutorialSimulationReach}
         />
       </Suspense>
     </KeyboardControls>
@@ -169,10 +236,13 @@ function SceneContents({
   paused,
   tutorialActive,
   tutorialGuidanceMode,
+  tutorialSpawn,
   tutorialCheckpoint,
   tutorialTarget,
+  tutorialSimulation,
   onTutorialCheckpointReach,
   onTutorialTargetReach,
+  onTutorialSimulationReach,
 }: PortfolioSceneProps) {
   const { resolvedLocale, messages } = useI18n();
   const droneBody = useRef<RapierRigidBody>(null!);
@@ -219,25 +289,30 @@ function SceneContents({
       {tutorialGuidanceMode !== "inactive" ? (
         <TutorialRoute
           mode={tutorialGuidanceMode}
+          spawn={tutorialSpawn}
           checkpoint={tutorialCheckpoint}
           target={tutorialTarget}
+          simulation={tutorialSimulation}
           checkpointLabel={messages.scene.checkpoint}
           targetLabel={messages.scene.shahedTarget}
+          simulationLabel={messages.scene.simulationPoint}
         />
       ) : null}
 
       <Physics gravity={[0, 0, 0]}>
         <Floor />
         <BoundaryWalls />
-        <Drone bodyRef={droneBody} headingRef={heading} paused={paused} />
+        <Drone bodyRef={droneBody} headingRef={heading} paused={paused} tutorialSpawn={tutorialSpawn} />
         <TargetShahed label={messages.scene.target} />
         <TutorialProgressWatcher
           bodyRef={droneBody}
           mode={tutorialGuidanceMode}
           checkpoint={tutorialCheckpoint}
           target={tutorialTarget}
+          simulation={tutorialSimulation}
           onCheckpointReach={onTutorialCheckpointReach}
           onTargetReach={onTutorialTargetReach}
+          onSimulationReach={onTutorialSimulationReach}
         />
 
         {projects.map((project) => (
@@ -282,7 +357,17 @@ function DroneRimLight({ bodyRef }: { bodyRef: MutableRefObject<RapierRigidBody>
   return <pointLight ref={lightRef} color="#90b5d0" distance={14} intensity={0.22} />;
 }
 
-function Drone({ bodyRef, headingRef, paused }: { bodyRef: MutableRefObject<RapierRigidBody>; headingRef: MutableRefObject<THREE.Vector3>; paused: boolean }) {
+function Drone({
+  bodyRef,
+  headingRef,
+  paused,
+  tutorialSpawn,
+}: {
+  bodyRef: MutableRefObject<RapierRigidBody>;
+  headingRef: MutableRefObject<THREE.Vector3>;
+  paused: boolean;
+  tutorialSpawn: [number, number, number];
+}) {
   const [_, getKeys] = useKeyboardControls<ControlName>();
   const { camera } = useThree();
   const droneMesh = useRef<THREE.Group>(null);
@@ -414,7 +499,7 @@ function Drone({ bodyRef, headingRef, paused }: { bodyRef: MutableRefObject<Rapi
       lockRotations
       linearDamping={3.5}
       angularDamping={10}
-      position={[-16, 1.25, -16]}
+      position={tutorialSpawn}
     >
       <CuboidCollider args={[1.05, 0.42, 1.95]} />
       <group ref={droneMesh}>
@@ -484,7 +569,12 @@ function DroneTargetInfographics() {
 
 useGLTF.preload(droneModelUrl);
 useGLTF.preload(islandModelUrl);
+useGLTF.preload(islandCastleModelUrl);
+useGLTF.preload(industrialAntennaModelUrl);
 useGLTF.preload(shahedModelUrl);
+useGLTF.preload(shahedAnimatedModelUrl);
+useGLTF.preload(tutorRobotOneModelUrl);
+useGLTF.preload(tutorRobotTwoModelUrl);
 useGLTF.preload(waterCubeModelUrl);
 
 function FollowCamera({ bodyRef, headingRef }: { bodyRef: MutableRefObject<RapierRigidBody>; headingRef: MutableRefObject<THREE.Vector3> }) {
@@ -512,51 +602,52 @@ function FollowCamera({ bodyRef, headingRef }: { bodyRef: MutableRefObject<Rapie
 }
 
 function ProjectIsland({ active, unlocked, project, onFocus, tutorialLocked }: { active: boolean; unlocked: boolean; project: ProjectNode; onFocus: (projectId: string | null) => void; tutorialLocked: boolean }) {
-  const gltf = useGLTF(islandModelUrl);
-  const islandVisual = useMemo(() => {
-    const root = gltf.scene.clone(true);
-
-    root.traverse((obj: THREE.Object3D) => {
-      if (!(obj instanceof THREE.Mesh)) {
-        return;
-      }
-
-      obj.castShadow = true;
-      obj.receiveShadow = true;
-
-      if (Array.isArray(obj.material)) {
-        obj.material.forEach((mat) => {
-          if (mat instanceof THREE.MeshStandardMaterial || mat instanceof THREE.MeshPhysicalMaterial) {
-            mat.envMapIntensity = 0.6;
-          }
-        });
-      } else if (obj.material instanceof THREE.MeshStandardMaterial || obj.material instanceof THREE.MeshPhysicalMaterial) {
-        obj.material.envMapIntensity = 0.6;
-      }
+  const baseIslandGltf = useGLTF(islandModelUrl);
+  const castleIslandGltf = useGLTF(islandCastleModelUrl);
+  const antennaGltf = useGLTF(industrialAntennaModelUrl);
+  const islandVariant = project.id === "sector-alpha" || project.id === "sector-delta" ? "castle" : "base";
+  const islandSource = islandVariant === "castle" ? castleIslandGltf.scene : baseIslandGltf.scene;
+  const islandLayout = useMemo(() => {
+    const root = prepareImportedModel(islandSource, {
+      targetSize: islandVariant === "castle" ? 5.8 : 4.6,
+      lift: 0.06,
+      envMapIntensity: 0.6,
+      roughnessDelta: 0.04,
     });
 
-    const bounds = new THREE.Box3().setFromObject(root);
-    const size = new THREE.Vector3();
-    const center = new THREE.Vector3();
-    bounds.getSize(size);
-    bounds.getCenter(center);
-    root.position.sub(center);
+    const colliderBounds = new THREE.Box3().setFromObject(root);
+    const colliderCenter = colliderBounds.getCenter(new THREE.Vector3());
+    const halfX = Math.max(1.25, (colliderBounds.max.x - colliderBounds.min.x) * 0.5);
+    const halfY = Math.max(0.9, (colliderBounds.max.y - colliderBounds.min.y) * 0.5);
+    const halfZ = Math.max(1.25, (colliderBounds.max.z - colliderBounds.min.z) * 0.5);
 
-    const maxDim = Math.max(size.x, size.y, size.z, 0.001);
-    const targetSize = 4.6;
-    root.scale.setScalar(targetSize / maxDim);
-
-    const placedBounds = new THREE.Box3().setFromObject(root);
-    root.position.y -= placedBounds.min.y - 0.06;
-
-    return root;
-  }, [gltf.scene]);
+    return {
+      root,
+      center: [colliderCenter.x, colliderCenter.y, colliderCenter.z] as [number, number, number],
+      blocker: [halfX * 0.45, Math.max(0.95, halfY * 0.58), halfZ * 0.45] as [number, number, number],
+      sensor: [halfX * 0.98, Math.max(2.0, halfY * 1.2), halfZ * 0.98] as [number, number, number],
+    };
+  }, [islandSource, islandVariant]);
+  const antennaVisual = useMemo(
+    () =>
+      prepareImportedModel(antennaGltf.scene, {
+        targetSize: unlocked ? 2.8 : 2.45,
+        lift: 0.02,
+        envMapIntensity: 0.48,
+        roughnessDelta: 0.08,
+      }),
+    [antennaGltf.scene, unlocked]
+  );
+  const beaconOpacity = active ? 0.38 : unlocked ? 0.22 : 0.14;
+  const antennaOffsetX = islandVariant === "castle" ? 1.55 : 0.95;
+  const antennaOffsetY = islandVariant === "castle" ? 1.65 : 1.05;
 
   return (
     <RigidBody type="fixed" colliders={false} position={project.position}>
-      <CuboidCollider args={[1.4, 1.1, 1.4]} />
+      <CuboidCollider args={islandLayout.blocker} position={islandLayout.center} />
       <CuboidCollider
-        args={[4.2, 2.4, 4.2]}
+        args={islandLayout.sensor}
+        position={islandLayout.center}
         sensor
         onIntersectionEnter={() => {
           if (!tutorialLocked) {
@@ -570,7 +661,16 @@ function ProjectIsland({ active, unlocked, project, onFocus, tutorialLocked }: {
         }}
       />
 
-      <primitive object={islandVisual} />
+      <primitive object={islandLayout.root} />
+
+      <group position={[islandLayout.center[0] + antennaOffsetX, islandLayout.center[1] + antennaOffsetY, islandLayout.center[2] - 0.78]}>
+        <primitive object={antennaVisual} rotation={[0, Math.PI * -0.12, 0]} />
+      </group>
+
+      <mesh position={[islandLayout.center[0], 0.06, islandLayout.center[2]]} rotation={[-Math.PI / 2, 0, 0]}>
+        <ringGeometry args={[2.05, 2.58, 72]} />
+        <meshBasicMaterial color={project.accent} transparent opacity={beaconOpacity} side={THREE.DoubleSide} />
+      </mesh>
 
       {/* Keep legacy challenge anchor aligned to island center, but invisible. */}
       <group visible={false}>
@@ -592,18 +692,23 @@ function TutorialProgressWatcher({
   mode,
   checkpoint,
   target,
+  simulation,
   onCheckpointReach,
   onTargetReach,
+  onSimulationReach,
 }: {
   bodyRef: MutableRefObject<RapierRigidBody>;
-  mode: "inactive" | "checkpoint" | "target";
+  mode: "inactive" | "checkpoint" | "target" | "simulation";
   checkpoint: [number, number, number];
   target: [number, number, number];
+  simulation: [number, number, number];
   onCheckpointReach: () => void;
   onTargetReach: () => void;
+  onSimulationReach: () => void;
 }) {
   const checkpointHit = useRef(false);
   const targetHit = useRef(false);
+  const simulationHit = useRef(false);
 
   useEffect(() => {
     if (mode !== "checkpoint") {
@@ -611,6 +716,9 @@ function TutorialProgressWatcher({
     }
     if (mode !== "target") {
       targetHit.current = false;
+    }
+    if (mode !== "simulation") {
+      simulationHit.current = false;
     }
   }, [mode]);
 
@@ -638,6 +746,14 @@ function TutorialProgressWatcher({
         onTargetReach();
       }
     }
+
+    if (mode === "simulation" && !simulationHit.current) {
+      const simulationDistance = current.distanceTo(new THREE.Vector3(...simulation));
+      if (simulationDistance <= 4.4) {
+        simulationHit.current = true;
+        onSimulationReach();
+      }
+    }
   });
 
   return null;
@@ -645,28 +761,38 @@ function TutorialProgressWatcher({
 
 function TutorialRoute({
   mode,
+  spawn,
   checkpoint,
   target,
+  simulation,
   checkpointLabel,
   targetLabel,
+  simulationLabel,
 }: {
-  mode: "checkpoint" | "target";
+  mode: "checkpoint" | "target" | "simulation";
+  spawn: [number, number, number];
   checkpoint: [number, number, number];
   target: [number, number, number];
+  simulation: [number, number, number];
   checkpointLabel: string;
   targetLabel: string;
+  simulationLabel: string;
 }) {
   const checkpointPulseRef = useRef<THREE.Mesh>(null);
   const targetPulseRef = useRef<THREE.Mesh>(null);
+  const simulationPulseRef = useRef<THREE.Mesh>(null);
 
-  const points = useMemo(
-    () => [
-      new THREE.Vector3(-16, 0.18, -16),
+  const points = useMemo(() => {
+    if (mode === "simulation") {
+      return [new THREE.Vector3(target[0], 0.18, target[2]), new THREE.Vector3(simulation[0], 0.18, simulation[2])];
+    }
+
+    return [
+      new THREE.Vector3(spawn[0], 0.18, spawn[2]),
       new THREE.Vector3(checkpoint[0], 0.18, checkpoint[2]),
       new THREE.Vector3(target[0], 0.18, target[2]),
-    ],
-    [checkpoint, target]
-  );
+    ];
+  }, [mode, spawn, checkpoint, target, simulation]);
 
   const geometry = useMemo(() => new THREE.BufferGeometry().setFromPoints(points), [points]);
   const material = useMemo(
@@ -697,6 +823,9 @@ function TutorialRoute({
     if (targetPulseRef.current) {
       targetPulseRef.current.scale.setScalar(mode === "target" ? pulseScale : 1);
     }
+    if (simulationPulseRef.current) {
+      simulationPulseRef.current.scale.setScalar(mode === "simulation" ? pulseScale : 1);
+    }
   });
 
   return (
@@ -723,6 +852,18 @@ function TutorialRoute({
         <Float speed={1.2} rotationIntensity={0} floatIntensity={0.16} position={[0, 3.3, 0]}>
           <Text fontSize={0.38} color="#ffb4b4" anchorX="center" anchorY="middle" outlineWidth={0.05} outlineColor="#290808">
             {targetLabel}
+          </Text>
+        </Float>
+      </group>
+
+      <group position={[simulation[0], 0.08, simulation[2]]} visible={mode === "simulation"}>
+        <mesh ref={simulationPulseRef} rotation={[-Math.PI / 2, 0, 0]}>
+          <ringGeometry args={[3.2, 4.2, 96]} />
+          <meshBasicMaterial color="#ffd977" transparent opacity={0.45} side={THREE.DoubleSide} />
+        </mesh>
+        <Float speed={1.1} rotationIntensity={0} floatIntensity={0.16} position={[0, 3.6, 0]}>
+          <Text fontSize={0.4} color="#ffe8b5" anchorX="center" anchorY="middle" outlineWidth={0.05} outlineColor="#302108">
+            {simulationLabel}
           </Text>
         </Float>
       </group>
@@ -805,15 +946,138 @@ function TargetShahed({ label }: { label: string }) {
 }
 
 function OperationalZones() {
+  const { messages } = useI18n();
+
   return (
     <group>
       <PolygonZone position={[22, 0, -16]} radius={10.5} sides={6} title="INTERCEPT DEMO">
         <ZoneInterceptAnimation />
+        <GuideRobot modelUrl={tutorRobotOneModelUrl} position={[-6.1, 0.82, 4.5]} rotation={[0, Math.PI * 0.18, 0]} accent="#7cedc8" />
+        <ZoneInterceptBriefingBoard
+          title={messages.scene.boardTitle}
+          phase1Title={messages.scene.phase1Title}
+          phase1Body={messages.scene.phase1Body}
+          phase2Title={messages.scene.phase2Title}
+          phase2Body={messages.scene.phase2Body}
+          phase3Title={messages.scene.phase3Title}
+          phase3Body={messages.scene.phase3Body}
+        />
       </PolygonZone>
 
       <PolygonZone position={[22, 0, 16]} radius={9.8} sides={8} title="C2 DATA LINK">
         <ZoneNetworkAnimation />
+        <GuideRobot modelUrl={tutorRobotTwoModelUrl} position={[5.6, 0.82, -3.6]} rotation={[0, -Math.PI * 0.58, 0]} accent="#80d7ff" />
       </PolygonZone>
+    </group>
+  );
+}
+
+function GuideRobot({
+  modelUrl,
+  position,
+  rotation,
+  accent,
+}: {
+  modelUrl: string;
+  position: [number, number, number];
+  rotation: [number, number, number];
+  accent: string;
+}) {
+  const gltf = useGLTF(modelUrl);
+  const robotVisual = useMemo(
+    () =>
+      prepareImportedModel(gltf.scene, {
+        targetSize: 2.4,
+        lift: 0.01,
+        envMapIntensity: 0.46,
+        roughnessDelta: 0.08,
+      }),
+    [gltf.scene]
+  );
+
+  return (
+    <Float speed={1.2} rotationIntensity={0.08} floatIntensity={0.14} position={position}>
+      <group rotation={rotation}>
+        <primitive object={robotVisual} />
+        <mesh position={[0, 0.06, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+          <ringGeometry args={[1.05, 1.34, 48]} />
+          <meshBasicMaterial color={accent} transparent opacity={0.24} side={THREE.DoubleSide} />
+        </mesh>
+      </group>
+    </Float>
+  );
+}
+
+function ZoneInterceptBriefingBoard({
+  title,
+  phase1Title,
+  phase1Body,
+  phase2Title,
+  phase2Body,
+  phase3Title,
+  phase3Body,
+}: {
+  title: string;
+  phase1Title: string;
+  phase1Body: string;
+  phase2Title: string;
+  phase2Body: string;
+  phase3Title: string;
+  phase3Body: string;
+}) {
+  const bannerTexture = useTexture(bannerImageUrl);
+
+  useMemo(() => {
+    bannerTexture.colorSpace = THREE.SRGBColorSpace;
+    bannerTexture.wrapS = THREE.ClampToEdgeWrapping;
+    bannerTexture.wrapT = THREE.ClampToEdgeWrapping;
+  }, [bannerTexture]);
+
+  return (
+    <group position={[0, 1.2, -4.9]}>
+      <mesh>
+        <boxGeometry args={[8.6, 3.3, 0.26]} />
+        <meshStandardMaterial color="#0f1725" emissive="#0a1320" emissiveIntensity={0.22} metalness={0.2} roughness={0.7} />
+      </mesh>
+
+      <mesh position={[0, 0.87, 0.145]}>
+        <planeGeometry args={[7.9, 0.9]} />
+        <meshBasicMaterial map={bannerTexture} transparent opacity={0.88} />
+      </mesh>
+
+      <mesh position={[0, 0.92, 0.146]}>
+        <planeGeometry args={[7.9, 0.9]} />
+        <meshBasicMaterial color="#08111d" transparent opacity={0.38} />
+      </mesh>
+
+      <Text position={[0, 0.88, 0.151]} fontSize={0.26} maxWidth={7.6} textAlign="center" color="#cfe7ff" anchorX="center" anchorY="middle" outlineWidth={0.03} outlineColor="#0b1320">
+        {title}
+      </Text>
+
+      <PhaseRow index="01" y={0.18} title={phase1Title} body={phase1Body} />
+      <PhaseRow index="02" y={-0.62} title={phase2Title} body={phase2Body} />
+      <PhaseRow index="03" y={-1.42} title={phase3Title} body={phase3Body} />
+    </group>
+  );
+}
+
+function PhaseRow({ index, y, title, body }: { index: string; y: number; title: string; body: string }) {
+  return (
+    <group position={[0, y, 0.15]}>
+      <mesh position={[-3.35, 0, 0]}>
+        <circleGeometry args={[0.22, 24]} />
+        <meshBasicMaterial color="#1f3347" />
+      </mesh>
+      <Text position={[-3.35, 0, 0.01]} fontSize={0.13} color="#9fcfff" anchorX="center" anchorY="middle">
+        {index}
+      </Text>
+
+      <Text position={[-2.95, 0.1, 0]} fontSize={0.165} maxWidth={6.4} lineHeight={1.2} textAlign="left" color="#dff0ff" anchorX="left" anchorY="middle">
+        {title}
+      </Text>
+      <Text position={[-2.95, -0.15, 0]} fontSize={0.12} maxWidth={6.4} lineHeight={1.24} textAlign="left" color="#9eb8d1" anchorX="left" anchorY="middle">
+        {body}
+      </Text>
     </group>
   );
 }
@@ -829,7 +1093,7 @@ function PolygonZone({
   radius: number;
   sides: number;
   title: string;
-  children: React.ReactNode;
+  children: ReactNode;
 }) {
   return (
     <group position={position}>
@@ -861,10 +1125,22 @@ function PolygonZone({
 
 function ZoneInterceptAnimation() {
   const defenderRef = useRef<THREE.Mesh>(null);
-  const attackerRef = useRef<THREE.Mesh>(null);
+  const attackerRef = useRef<THREE.Group>(null);
   const seekerRef = useRef<THREE.Mesh>(null);
   const blastRef = useRef<THREE.Mesh>(null);
   const beamRef = useRef<THREE.Mesh>(null);
+  const gltf = useGLTF(shahedAnimatedModelUrl);
+  const attackerVisual = useMemo(
+    () =>
+      prepareImportedModel(gltf.scene, {
+        targetSize: 1.55,
+        lift: 0,
+        envMapIntensity: 0.24,
+        roughnessDelta: 0.16,
+        metalnessDelta: -0.08,
+      }),
+    [gltf.scene]
+  );
   const beamMid = useMemo(() => new THREE.Vector3(), []);
   const beamDir = useMemo(() => new THREE.Vector3(), []);
   const beamQuat = useMemo(() => new THREE.Quaternion(), []);
@@ -956,10 +1232,9 @@ function ZoneInterceptAnimation() {
         <meshStandardMaterial color="#7cedc8" emissive="#7cedc8" emissiveIntensity={0.45} />
       </mesh>
 
-      <mesh ref={attackerRef}>
-        <coneGeometry args={[0.34, 1.12, 8]} />
-        <meshStandardMaterial color="#f38774" emissive="#d55f4f" emissiveIntensity={0.28} />
-      </mesh>
+      <group ref={attackerRef}>
+        <primitive object={attackerVisual} rotation={[0, Math.PI / 2, 0]} />
+      </group>
 
       <mesh ref={beamRef}>
         <cylinderGeometry args={[0.055, 0.055, 1, 10]} />

@@ -75,7 +75,7 @@ const localizedProjects: LocalizedProjectNode[] = [
     },
     accent: "#00ff41",
     location: { cs: "[Lokalita]", en: "[Location]" },
-    position: [-24, 1.2, -12],
+    position: [-32, 1.2, -20],
     minigame: {
       name: { cs: "Space Invaders", en: "Space Invaders" },
       controls: { cs: "← → pohyb · Mezerník střelba", en: "← → move · Space fire" },
@@ -120,7 +120,7 @@ const localizedProjects: LocalizedProjectNode[] = [
     },
     accent: "#39ff14",
     location: { cs: "[Lokalita]", en: "[Location]" },
-    position: [8, 1.2, 20],
+    position: [-30, 1.2, -2],
     minigame: {
       name: { cs: "Snake", en: "Snake" },
       controls: { cs: "← → ↑ ↓ pohyb", en: "← → ↑ ↓ move" },
@@ -165,7 +165,7 @@ const localizedProjects: LocalizedProjectNode[] = [
     },
     accent: "#00ffff",
     location: { cs: "[Lokalita]", en: "[Location]" },
-    position: [24, 1.2, -8],
+    position: [-24, 1.2, 16],
     minigame: {
       name: { cs: "Pong", en: "Pong" },
       controls: { cs: "↑ ↓ pohyb", en: "↑ ↓ move" },
@@ -210,7 +210,7 @@ const localizedProjects: LocalizedProjectNode[] = [
     },
     accent: "#ff9f1c",
     location: { cs: "[Lokalita]", en: "[Location]" },
-    position: [-10, 1.2, 18],
+    position: [-18, 1.2, -22],
     minigame: {
       name: { cs: "Frogger", en: "Frogger" },
       controls: { cs: "← → ↑ ↓ skok", en: "← → ↑ ↓ hop" },
