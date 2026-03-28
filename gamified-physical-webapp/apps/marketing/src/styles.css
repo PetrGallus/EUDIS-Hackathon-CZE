@@ -427,7 +427,8 @@ tr.row-locked .col-unlocks {
   padding: 1.1rem;
   max-width: 760px;
   width: min(100%, 760px);
-  overflow: hidden;
+  overflow-y: auto;
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 0.65rem;
@@ -470,6 +471,15 @@ tr.row-locked .col-unlocks {
 
 .challenge-grid-drone {
   max-height: 42vh;
+}
+
+.challenge-game {
+  margin-bottom: 1rem;
+  display: flex;
+  justify-content: center;
+  background: rgba(2, 6, 18, 0.5);
+  border-radius: 4px;
+  padding: 1rem;
 }
 
 .challenge-cell {
@@ -547,6 +557,29 @@ tr.row-locked .col-unlocks {
   margin-top: 0.35rem;
 }
 
+.challenge-result-popup-backdrop {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: rgba(1, 6, 16, 0.72);
+  backdrop-filter: blur(3px);
+  z-index: 20;
+}
+
+.challenge-result-popup {
+  width: min(92vw, 560px);
+  max-height: min(86vh, 760px);
+  overflow-y: auto;
+  background: rgba(4, 12, 28, 0.96);
+  border: 1px solid rgba(124, 156, 255, 0.34);
+  border-radius: 10px;
+  padding: 1rem;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.45);
+}
+
 .challenge-outcome {
   text-align: center;
   font-size: 0.95rem;
@@ -564,6 +597,55 @@ tr.row-locked .col-unlocks {
 .challenge-outcome.lost {
   background: rgba(255, 143, 125, 0.16);
   color: #ff8f7d;
+}
+
+/* Secret content reveal */
+.secret-content-reveal {
+  background: linear-gradient(135deg, rgba(0, 255, 65, 0.1) 0%, rgba(123, 207, 255, 0.1) 100%);
+  border: 2px solid #7bcfff;
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  animation: slideIn 0.6s ease-out;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.secret-content-reveal h3 {
+  font-size: 1.3rem;
+  color: #00ff41;
+  text-shadow: 0 0 10px rgba(0, 255, 65, 0.5);
+  margin: 0 0 1rem 0;
+}
+
+.secret-image {
+  max-width: 100%;
+  height: auto;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  border: 1px solid rgba(123, 207, 255, 0.5);
+  box-shadow: 0 0 15px rgba(123, 207, 255, 0.3);
+}
+
+.secret-description {
+  font-size: 0.95rem;
+  color: #e0e0e0;
+  line-height: 1.5;
+  margin-bottom: 0.8rem;
+}
+
+.secret-emoji {
+  font-size: 2rem;
+  margin-top: 0.8rem;
 }
 
 /* Dossier modal */
@@ -610,9 +692,22 @@ tr.row-locked .col-unlocks {
   border-left: 3px solid #7c9cff;
 }
 
+.dossier-media {
+  margin: 0 0 1.5rem 0;
+}
+
+.dossier-media-image {
+  width: 100%;
+  max-height: 280px;
+  object-fit: cover;
+  border-radius: 6px;
+  border: 1px solid rgba(124, 156, 255, 0.3);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.25);
+}
+
 .dossier-stats {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
   gap: 1rem;
   margin-bottom: 2rem;
   padding: 1.5rem;

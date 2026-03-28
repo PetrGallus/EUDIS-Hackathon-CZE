@@ -1,12 +1,15 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { Canvas } from "@react-three/fiber";
 import * as THREE from "three";
 import { useI18n } from "./i18n";
 import { PortfolioScene } from "./scene/PortfolioScene";
-import { IslandChallenge } from "./scene/IslandChallenge";
+import { IslandChallenge } from "./components/IslandChallenge";
 import { TutorialGuideAvatar } from "./components/TutorialGuideAvatar";
 import { TutorialShahedPreview } from "./components/TutorialShahedPreview";
 import { getProjects } from "./scene/projects";
+import teamImage from "./images/1 team.png";
+import topicsImage from "./images/2 hackathon tackled topics.png";
+import progressImage from "./images/3 hackathon progress.png";
 import "./styles.css";
 
 type TutorialStage = "intro" | "flight" | "checkpoint" | "target" | "simulation" | "outro" | "done";
@@ -17,6 +20,12 @@ const tutorialTarget: [number, number, number] = [0, 1.25, 0];
 const tutorialSimulationPoint: [number, number, number] = [20, 1.25, -13];
 const captureMode = false;
 
+const DOSSIER_MEDIA: Record<string, { src: string; alt: string }> = {
+  "sector-alpha": { src: topicsImage, alt: "Hackathon tackled topics" },
+  "sector-bravo": { src: teamImage, alt: "Core team" },
+  "sector-charlie": { src: progressImage, alt: "Hackathon progress" },
+};
+
 export function App() {
   const { locale, resolvedLocale, messages, setLocale } = useI18n();
   const [focusedProjectId, setFocusedProjectId] = useState<string | null>(null);
@@ -25,6 +34,8 @@ export function App() {
   const [unlockedProjectIds, setUnlockedProjectIds] = useState<Set<string>>(new Set());
   const [tutorialStage, setTutorialStage] = useState<TutorialStage>("intro");
   const projects = useMemo(() => getProjects(resolvedLocale), [resolvedLocale]);
+  // Grace period ref: prevents accidental island focus right after tutorial skip
+  const focusGraceRef = useRef(false);
 
   const localeChosen = locale !== null;
   const tutorialActive = localeChosen && tutorialStage !== "done";
@@ -40,7 +51,7 @@ export function App() {
 
   const handleProjectFocus = useCallback(
     (projectId: string | null) => {
-      if (!localeChosen || tutorialActive) {
+      if (!localeChosen || tutorialActive || focusGraceRef.current) {
         return;
       }
 
@@ -81,6 +92,7 @@ export function App() {
   const activeProject = focusedProjectId ? projects.find((p) => p.id === focusedProjectId) : null;
   const challengeProject = challengeProjectId ? projects.find((p) => p.id === challengeProjectId) : null;
   const dossierProject = openProjectId ? projects.find((p) => p.id === openProjectId) : null;
+  const dossierMedia = dossierProject ? DOSSIER_MEDIA[dossierProject.id] : undefined;
   const formatTutorialChip = (text: string) => {
     const normalized = text.includes("//") ? text.split("//")[1]?.trim() ?? text : text;
     return normalized.toUpperCase();
@@ -311,6 +323,12 @@ export function App() {
 
             <div className="dossier-hook">{dossierProject.dossier.hook}</div>
 
+            {dossierMedia ? (
+              <figure className="dossier-media">
+                <img src={dossierMedia.src} alt={dossierMedia.alt} className="dossier-media-image" />
+              </figure>
+            ) : null}
+
             <div className="dossier-stats">
               {dossierProject.dossier.stats.map((stat, idx) => (
                 <div key={idx} className="dossier-stat">
@@ -387,7 +405,11 @@ export function App() {
             </div>
 
             <div className="tutorial-actions">
-              <button className="ghost-button tutorial-skip-button" onClick={() => setTutorialStage("done")}>
+              <button className="ghost-button tutorial-skip-button" onClick={() => {
+                focusGraceRef.current = true;
+                setTutorialStage("done");
+                setTimeout(() => { focusGraceRef.current = false; }, 1500);
+              }}>
                 {messages.tutorial.skip}
               </button>
               <button className="primary-button" onClick={() => setTutorialStage("flight")}>
