@@ -15,6 +15,7 @@ const tutorialSpawn: [number, number, number] = [-30, 1.25, -24];
 const tutorialCheckpoint: [number, number, number] = [-16, 1.25, -15];
 const tutorialTarget: [number, number, number] = [0, 1.25, 0];
 const tutorialSimulationPoint: [number, number, number] = [20, 1.25, -13];
+const captureMode = false;
 
 export function App() {
   const { locale, resolvedLocale, messages, setLocale } = useI18n();
@@ -94,7 +95,7 @@ export function App() {
   };
 
   return (
-    <main className="app-shell">
+    <main className={`app-shell ${captureMode ? "capture-clean" : ""}`}>
       <Canvas dpr={[1, 2]} shadows gl={{ antialias: true, toneMapping: THREE.ACESFilmicToneMapping, toneMappingExposure: 0.156 }}>
         <PortfolioScene
           focusedProjectId={focusedProjectId}
@@ -107,6 +108,7 @@ export function App() {
           tutorialCheckpoint={tutorialCheckpoint}
           tutorialTarget={tutorialTarget}
           tutorialSimulation={tutorialSimulationPoint}
+          hidePlayerDrone={captureMode}
           onTutorialCheckpointReach={() => {
             if (tutorialStage === "flight") {
               setTutorialStage("checkpoint");

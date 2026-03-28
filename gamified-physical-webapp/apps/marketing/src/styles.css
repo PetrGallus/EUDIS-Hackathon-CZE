@@ -29,6 +29,14 @@ body,
   overflow: hidden;
 }
 
+/* Temporary clean capture mode: hide all UI overlays for recording. */
+.app-shell.capture-clean .hud,
+.app-shell.capture-clean .tutorial-overlay,
+.app-shell.capture-clean .tutorial-escort-card,
+.app-shell.capture-clean .modal {
+  display: none !important;
+}
+
 canvas {
   display: block;
   width: 100% !important;

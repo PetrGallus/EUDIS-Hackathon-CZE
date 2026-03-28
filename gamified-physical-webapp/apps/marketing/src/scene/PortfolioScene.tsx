@@ -24,6 +24,7 @@ type PortfolioSceneProps = {
   unlockedProjectIds: Set<string>;
   onProjectFocus: (projectId: string | null) => void;
   paused: boolean;
+  hidePlayerDrone?: boolean;
   tutorialActive: boolean;
   tutorialGuidanceMode: "inactive" | "checkpoint" | "target" | "simulation";
   tutorialSpawn: [number, number, number];
@@ -43,7 +44,8 @@ const controls = [
   { name: "boost" as const, keys: ["Space"] },
 ];
 
-const cameraOffset = new THREE.Vector3(0, 5.4, 8.8);
+// Production camera framing.
+const cameraOffset = new THREE.Vector3(0, 5.4, 12.5);
 const desiredCameraPosition = new THREE.Vector3();
 const lookTarget = new THREE.Vector3();
 const movementVector = new THREE.Vector3();
@@ -203,6 +205,7 @@ export function PortfolioScene({
   unlockedProjectIds,
   onProjectFocus,
   paused,
+  hidePlayerDrone = false,
   tutorialActive,
   tutorialGuidanceMode,
   tutorialSpawn,
@@ -221,6 +224,7 @@ export function PortfolioScene({
           unlockedProjectIds={unlockedProjectIds}
           onProjectFocus={onProjectFocus}
           paused={paused}
+          hidePlayerDrone={hidePlayerDrone}
           tutorialActive={tutorialActive}
           tutorialGuidanceMode={tutorialGuidanceMode}
           tutorialSpawn={tutorialSpawn}
@@ -241,6 +245,7 @@ function SceneContents({
   unlockedProjectIds,
   onProjectFocus,
   paused,
+  hidePlayerDrone = false,
   tutorialActive,
   tutorialGuidanceMode,
   tutorialSpawn,
@@ -260,7 +265,7 @@ function SceneContents({
     <>
       <color attach="background" args={["#040b14"]} />
       <fog attach="fog" args={["#0b1a28", 70, 220]} />
-      <PerspectiveCamera makeDefault position={[0, 7, 12]} fov={42} />
+      <PerspectiveCamera makeDefault position={[0, 7, 17]} fov={38} />
 
       <ambientLight intensity={0.3} color="#c9dcf2" />
       <hemisphereLight intensity={0.24} color="#9fc8e7" groundColor="#0f2336" />
@@ -309,7 +314,7 @@ function SceneContents({
       <Physics gravity={[0, 0, 0]}>
         <Floor />
         <BoundaryWalls />
-        <Drone bodyRef={droneBody} headingRef={heading} paused={paused} tutorialSpawn={tutorialSpawn} />
+        <Drone bodyRef={droneBody} headingRef={heading} paused={paused} tutorialSpawn={tutorialSpawn} hidden={hidePlayerDrone} />
         <TargetShahed label={messages.scene.target} />
         <TutorialProgressWatcher
           bodyRef={droneBody}
@@ -369,11 +374,13 @@ function Drone({
   headingRef,
   paused,
   tutorialSpawn,
+  hidden = false,
 }: {
   bodyRef: MutableRefObject<RapierRigidBody>;
   headingRef: MutableRefObject<THREE.Vector3>;
   paused: boolean;
   tutorialSpawn: [number, number, number];
+  hidden?: boolean;
 }) {
   const [_, getKeys] = useKeyboardControls<ControlName>();
   const { camera } = useThree();
@@ -509,7 +516,7 @@ function Drone({
       position={tutorialSpawn}
     >
       <CuboidCollider args={[1.05, 0.42, 1.95]} />
-      <group ref={droneMesh}>
+      <group ref={droneMesh} visible={!hidden}>
         <primitive object={droneVisual} rotation={[0, Math.PI + droneModelYawOffset, droneModelRollOffset]} />
         <DroneBoostEffect strengthRef={boostStrength} />
         <DroneTargetInfographics />
@@ -1075,6 +1082,8 @@ function ZoneInterceptAnimation() {
   const attackerRef = useRef<THREE.Group>(null);
   const blastRef = useRef<THREE.Mesh>(null);
   const beamRef = useRef<THREE.Mesh>(null);
+  const targetRingRef = useRef<THREE.Mesh>(null);
+  const targetLabelRef = useRef<THREE.Group>(null);
   const attackerGltf = useGLTF(shahedAnimatedModelUrl);
   const defenderGltf = useGLTF(droneModelUrl);
   const platformGltf = useGLTF(dronePlatformModelUrl);
@@ -1166,19 +1175,29 @@ function ZoneInterceptAnimation() {
   const previousDefenderYaw = useRef(0);
   const strikeLaunchPoint = useRef(new THREE.Vector3());
   const strikeCaptured = useRef(false);
+  const postStrikePoint = useRef(new THREE.Vector3());
+  const postStrikeDirection = useRef(new THREE.Vector3(0, 0, 1));
+  const postStrikeCaptured = useRef(false);
+  const animationStartTime = useRef<number | null>(null);
 
   useFrame((state, delta) => {
     const defender = defenderRef.current;
     const attacker = attackerRef.current;
     const blast = blastRef.current;
     const beam = beamRef.current;
+    const targetRing = targetRingRef.current;
+    const targetLabel = targetLabelRef.current;
 
-    if (!defender || !attacker || !blast || !beam) {
+    if (!defender || !attacker || !blast || !beam || !targetRing || !targetLabel) {
       return;
     }
 
     const cycle = 18;
-    const t = state.clock.elapsedTime % cycle;
+    if (animationStartTime.current === null) {
+      animationStartTime.current = state.clock.elapsedTime;
+    }
+    const elapsed = state.clock.elapsedTime - animationStartTime.current;
+    const t = elapsed % cycle;
 
     const launchStart = 2.2;
     const launchEnd = 4.6;
@@ -1186,8 +1205,28 @@ function ZoneInterceptAnimation() {
     const strikeStart = 6.9;
     const strikeEnd = 8.6;
 
-    if (t < launchStart) {
+    if (t > strikeEnd) {
       strikeCaptured.current = false;
+
+      if (!postStrikeCaptured.current) {
+        postStrikePoint.current.copy(defender.position);
+        postStrikeDirection.current.copy(interceptTangent).normalize();
+        postStrikeCaptured.current = true;
+      }
+
+      const egressTime = Math.min(t - strikeEnd, cycle - strikeEnd);
+      defender.position
+        .copy(postStrikePoint.current)
+        .addScaledVector(postStrikeDirection.current, egressTime * 2.35)
+        .addScaledVector(up, Math.min(0.7, egressTime * 0.18));
+
+      const yaw = Math.atan2(postStrikeDirection.current.x, postStrikeDirection.current.z);
+      const pitch = -Math.atan2(postStrikeDirection.current.y, Math.max(0.001, Math.hypot(postStrikeDirection.current.x, postStrikeDirection.current.z)));
+      defender.rotation.set(pitch, yaw + interceptDemoYawFix, -0.08);
+      previousDefenderYaw.current = yaw;
+    } else if (t < launchStart) {
+      strikeCaptured.current = false;
+      postStrikeCaptured.current = false;
       defender.position.set(launchPoint.x, launchPoint.y + Math.sin(t * 2.6) * 0.015, launchPoint.z);
       defender.rotation.set(0, Math.PI * 0.2, 0);
       previousDefenderYaw.current = Math.PI * 0.2;
@@ -1231,6 +1270,17 @@ function ZoneInterceptAnimation() {
     attacker.rotation.z = THREE.MathUtils.lerp(attacker.rotation.z, attackerRoll, rotLerp);
     attacker.visible = t < 9.8;
 
+    const targetLocked = t >= trackStart && t <= strikeEnd;
+    targetRing.visible = targetLocked && attacker.visible;
+    targetLabel.visible = targetLocked && attacker.visible;
+    if (targetLocked && attacker.visible) {
+      targetRing.position.set(attacker.position.x, 0.1, attacker.position.z);
+      targetLabel.position.set(attacker.position.x, 0.55, attacker.position.z);
+      const pulse = 1 + Math.sin(state.clock.elapsedTime * 5.4) * 0.08;
+      targetRing.scale.setScalar(pulse);
+      targetLabel.position.y += Math.sin(state.clock.elapsedTime * 4.2) * 0.04;
+    }
+
     const tracking = t >= trackStart && t < strikeStart;
     beam.visible = tracking;
     if (tracking) {
@@ -1247,6 +1297,7 @@ function ZoneInterceptAnimation() {
 
     const strikePhase = THREE.MathUtils.clamp((t - strikeStart) / (strikeEnd - strikeStart), 0, 1);
     if (t >= strikeStart && t <= strikeEnd) {
+      postStrikeCaptured.current = false;
       if (!strikeCaptured.current) {
         strikeLaunchPoint.current.copy(defender.position);
         strikeCaptured.current = true;
@@ -1274,8 +1325,6 @@ function ZoneInterceptAnimation() {
       previousDefenderYaw.current = yaw;
       const roll = THREE.MathUtils.clamp(-yawDelta * 5.4, -0.72, 0.72);
       defender.rotation.set(pitch, yaw + interceptDemoYawFix, roll);
-    } else if (t > strikeEnd) {
-      strikeCaptured.current = false;
     }
 
     const blastPhase = THREE.MathUtils.clamp((t - strikeEnd) / 2.1, 0, 1);
@@ -1301,9 +1350,10 @@ function ZoneInterceptAnimation() {
 
       <group ref={defenderRef}>
         <primitive object={interceptorVisual} rotation={[0, Math.PI + droneModelYawOffset, droneModelRollOffset]} />
+        <DroneTargetInfographics />
         <mesh position={[0, -0.28, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-          <ringGeometry args={[0.42, 0.58, 40]} />
-          <meshBasicMaterial color="#7cedc8" transparent opacity={0.45} side={THREE.DoubleSide} />
+          <ringGeometry args={[0.48, 0.58, 40]} />
+          <meshBasicMaterial color="#7c9cff" transparent opacity={0.48} side={THREE.DoubleSide} />
         </mesh>
       </group>
 
@@ -1311,9 +1361,20 @@ function ZoneInterceptAnimation() {
         <primitive object={attackerVisual} />
       </group>
 
+      <mesh ref={targetRingRef} visible={false} rotation={[-Math.PI / 2, 0, 0]}>
+        <ringGeometry args={[0.8, 0.9, 48]} />
+        <meshBasicMaterial color="#ff3b3b" transparent opacity={0.7} side={THREE.DoubleSide} toneMapped={false} />
+      </mesh>
+
+      <group ref={targetLabelRef} visible={false}>
+        <Text fontSize={0.18} color="#ff8a8a" anchorX="center" anchorY="middle" outlineWidth={0.03} outlineColor="#2f0505">
+          ! TARGET !
+        </Text>
+      </group>
+
       <mesh ref={beamRef}>
         <cylinderGeometry args={[0.055, 0.055, 1, 10]} />
-        <meshStandardMaterial color="#7bcfff" emissive="#5dc7ff" emissiveIntensity={0.5} transparent opacity={0.2} />
+        <meshStandardMaterial color="#ff4a4a" emissive="#ff3b3b" emissiveIntensity={0.6} transparent opacity={0.2} />
       </mesh>
 
       <mesh ref={blastRef}>
