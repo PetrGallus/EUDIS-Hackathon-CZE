@@ -13,8 +13,8 @@ import industrialAntennaModelUrl from "../images/industrial_antenna.glb?url";
 import waterCubeModelUrl from "../images/water_cube.glb?url";
 import shahedModelUrl from "../images/shahed_13.glb?url";
 import shahedAnimatedModelUrl from "../images/shahed_for_animation.glb?url";
-import tutorRobotOneModelUrl from "../images/tutor_robot_1.glb?url";
-import tutorRobotTwoModelUrl from "../images/tutor_robot_2.glb?url";
+import dronePlatformModelUrl from "../images/drone_platform.glb?url";
+import cityModelUrl from "../images/city.glb?url";
 import bannerImageUrl from "../images/banner (1).png";
 
 type ControlName = "forward" | "backward" | "leftward" | "rightward" | "boost";
@@ -55,6 +55,13 @@ const arenaHalf = 46;
 const maxShaderIslands = 8;
 const droneModelYawOffset = THREE.MathUtils.degToRad(-90);
 const droneModelRollOffset = THREE.MathUtils.degToRad(-40);
+const interceptDemoYawFix = -Math.PI * 5;
+const shahedDemoYawFix = Math.PI;
+
+function wrapAngle(angle: number) {
+  const twoPi = Math.PI * 2;
+  return ((((angle + Math.PI) % twoPi) + twoPi) % twoPi) - Math.PI;
+}
 
 function setRepeatMap(texture: THREE.Texture, repeat = 1) {
   texture.wrapS = THREE.RepeatWrapping;
@@ -260,7 +267,7 @@ function SceneContents({
       <directionalLight
         castShadow
         position={[18, 22, 10]}
-        intensity={0.94}
+        intensity={0.188}
         color="#fff8ee"
         shadow-mapSize-width={2048}
         shadow-mapSize-height={2048}
@@ -272,7 +279,7 @@ function SceneContents({
         shadow-camera-bottom={-28}
         shadow-bias={-0.00008}
       />
-      <directionalLight position={[-24, 14, -18]} intensity={0.38} color="#8bb7d6" />
+      <directionalLight position={[-24, 14, -18]} intensity={0.076} color="#8bb7d6" />
 
       {/* Rim/counter lights help the drone read clearly against bright water. */}
       <pointLight position={[-15, 9, -15]} intensity={0.28} color="#7aaed1" distance={30} />
@@ -332,7 +339,7 @@ function SceneContents({
       <GroundDetails />
 
       <EffectComposer multisampling={0}>
-        <Bloom intensity={0.34} luminanceThreshold={0.56} luminanceSmoothing={0.72} mipmapBlur radius={0.42} />
+        <Bloom intensity={0.068} luminanceThreshold={0.62} luminanceSmoothing={0.78} mipmapBlur radius={0.3} />
         <Vignette eskil={false} offset={0.28} darkness={0.72} />
       </EffectComposer>
     </>
@@ -573,8 +580,8 @@ useGLTF.preload(islandCastleModelUrl);
 useGLTF.preload(industrialAntennaModelUrl);
 useGLTF.preload(shahedModelUrl);
 useGLTF.preload(shahedAnimatedModelUrl);
-useGLTF.preload(tutorRobotOneModelUrl);
-useGLTF.preload(tutorRobotTwoModelUrl);
+useGLTF.preload(dronePlatformModelUrl);
+useGLTF.preload(cityModelUrl);
 useGLTF.preload(waterCubeModelUrl);
 
 function FollowCamera({ bodyRef, headingRef }: { bodyRef: MutableRefObject<RapierRigidBody>; headingRef: MutableRefObject<THREE.Vector3> }) {
@@ -787,16 +794,39 @@ function TutorialRoute({
       return [new THREE.Vector3(target[0], 0.18, target[2]), new THREE.Vector3(simulation[0], 0.18, simulation[2])];
     }
 
+    if (mode === "checkpoint") {
+      return [new THREE.Vector3(spawn[0], 0.18, spawn[2]), new THREE.Vector3(checkpoint[0], 0.18, checkpoint[2])];
+    }
+
+    const checkpointPoint = new THREE.Vector3(checkpoint[0], 0.18, checkpoint[2]);
+    const targetPoint = new THREE.Vector3(target[0], 0.18, target[2]);
+    const toTarget = targetPoint.clone().sub(checkpointPoint).setY(0).normalize();
+    const right = new THREE.Vector3(-toTarget.z, 0, toTarget.x);
+
+    // Wide tutorial detour to keep drone visible, then a rear approach onto Shahed.
+    const detourA = checkpointPoint.clone().addScaledVector(right, 12).addScaledVector(toTarget, 1.8);
+    const detourB = checkpointPoint.clone().addScaledVector(right, 19).addScaledVector(toTarget, 8.5);
+    const detourC = targetPoint.clone().addScaledVector(right, 13.5).addScaledVector(toTarget, 7.5);
+    const rearEntry = targetPoint.clone().addScaledVector(right, 6.4).addScaledVector(toTarget, 3.9);
+    const finalTurn = targetPoint.clone().addScaledVector(right, 1.9).addScaledVector(toTarget, 1.1);
+
     return [
-      new THREE.Vector3(spawn[0], 0.18, spawn[2]),
-      new THREE.Vector3(checkpoint[0], 0.18, checkpoint[2]),
-      new THREE.Vector3(target[0], 0.18, target[2]),
+      checkpointPoint,
+      detourA,
+      detourB,
+      detourC,
+      rearEntry,
+      finalTurn,
+      targetPoint,
     ];
   }, [mode, spawn, checkpoint, target, simulation]);
 
-  const geometry = useMemo(() => new THREE.BufferGeometry().setFromPoints(points), [points]);
+  const routeCurve = useMemo(() => new THREE.CatmullRomCurve3(points, false, "catmullrom", 0.2), [points]);
+  const routeCurvePoints = useMemo(() => routeCurve.getPoints(140), [routeCurve]);
+  const routeStripGeometry = useMemo(() => new THREE.TubeGeometry(routeCurve, 120, 0.11, 12, false), [routeCurve]);
+  const geometry = useMemo(() => new THREE.BufferGeometry().setFromPoints(routeCurvePoints), [routeCurvePoints]);
   const material = useMemo(
-    () => new THREE.LineDashedMaterial({ color: "#ff5f5f", dashSize: 1.25, gapSize: 0.55, transparent: true, opacity: 0.95 }),
+    () => new THREE.LineDashedMaterial({ color: "#ff2f2f", dashSize: 1.35, gapSize: 0.45, transparent: true, opacity: 0.98 }),
     []
   );
   const routeLine = useMemo(() => {
@@ -810,11 +840,15 @@ function TutorialRoute({
   }, [geometry]);
 
   useEffect(() => {
+    return () => routeStripGeometry.dispose();
+  }, [routeStripGeometry]);
+
+  useEffect(() => {
     return () => material.dispose();
   }, [material]);
 
   useFrame((state) => {
-    material.opacity = 0.72 + (Math.sin(state.clock.elapsedTime * 4.2) + 1) * 0.08;
+    material.opacity = 0.84 + (Math.sin(state.clock.elapsedTime * 4.2) + 1) * 0.08;
 
     const pulseScale = 1 + Math.sin(state.clock.elapsedTime * 3.2) * 0.18;
     if (checkpointPulseRef.current) {
@@ -830,6 +864,10 @@ function TutorialRoute({
 
   return (
     <group>
+      {/* Thick base strip doubles route visibility while keeping dashed tactical line on top. */}
+      <mesh geometry={routeStripGeometry} position={[0, 0.035, 0]}>
+        <meshBasicMaterial color="#ff2a2a" transparent opacity={0.38} depthWrite={false} toneMapped={false} />
+      </mesh>
       <primitive object={routeLine} />
 
       <group position={[checkpoint[0], 0.08, checkpoint[2]]} visible={mode === "checkpoint"}>
@@ -950,81 +988,19 @@ function OperationalZones() {
 
   return (
     <group>
-      <PolygonZone position={[22, 0, -16]} radius={10.5} sides={6} title="INTERCEPT DEMO">
+      <PolygonZone position={[22, 0, -16]} radius={10.5} sides={6} title="">
         <ZoneInterceptAnimation />
-        <GuideRobot modelUrl={tutorRobotOneModelUrl} position={[-6.1, 0.82, 4.5]} rotation={[0, Math.PI * 0.18, 0]} accent="#7cedc8" />
-        <ZoneInterceptBriefingBoard
-          title={messages.scene.boardTitle}
-          phase1Title={messages.scene.phase1Title}
-          phase1Body={messages.scene.phase1Body}
-          phase2Title={messages.scene.phase2Title}
-          phase2Body={messages.scene.phase2Body}
-          phase3Title={messages.scene.phase3Title}
-          phase3Body={messages.scene.phase3Body}
-        />
+        <ZoneInterceptBriefingBoard />
       </PolygonZone>
 
       <PolygonZone position={[22, 0, 16]} radius={9.8} sides={8} title="C2 DATA LINK">
         <ZoneNetworkAnimation />
-        <GuideRobot modelUrl={tutorRobotTwoModelUrl} position={[5.6, 0.82, -3.6]} rotation={[0, -Math.PI * 0.58, 0]} accent="#80d7ff" />
       </PolygonZone>
     </group>
   );
 }
 
-function GuideRobot({
-  modelUrl,
-  position,
-  rotation,
-  accent,
-}: {
-  modelUrl: string;
-  position: [number, number, number];
-  rotation: [number, number, number];
-  accent: string;
-}) {
-  const gltf = useGLTF(modelUrl);
-  const robotVisual = useMemo(
-    () =>
-      prepareImportedModel(gltf.scene, {
-        targetSize: 2.4,
-        lift: 0.01,
-        envMapIntensity: 0.46,
-        roughnessDelta: 0.08,
-      }),
-    [gltf.scene]
-  );
-
-  return (
-    <Float speed={1.2} rotationIntensity={0.08} floatIntensity={0.14} position={position}>
-      <group rotation={rotation}>
-        <primitive object={robotVisual} />
-        <mesh position={[0, 0.06, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-          <ringGeometry args={[1.05, 1.34, 48]} />
-          <meshBasicMaterial color={accent} transparent opacity={0.24} side={THREE.DoubleSide} />
-        </mesh>
-      </group>
-    </Float>
-  );
-}
-
-function ZoneInterceptBriefingBoard({
-  title,
-  phase1Title,
-  phase1Body,
-  phase2Title,
-  phase2Body,
-  phase3Title,
-  phase3Body,
-}: {
-  title: string;
-  phase1Title: string;
-  phase1Body: string;
-  phase2Title: string;
-  phase2Body: string;
-  phase3Title: string;
-  phase3Body: string;
-}) {
+function ZoneInterceptBriefingBoard() {
   const bannerTexture = useTexture(bannerImageUrl);
 
   useMemo(() => {
@@ -1034,50 +1010,21 @@ function ZoneInterceptBriefingBoard({
   }, [bannerTexture]);
 
   return (
-    <group position={[0, 1.2, -4.9]}>
+    <group position={[0, 1.78, -4.9]}>
       <mesh>
-        <boxGeometry args={[8.6, 3.3, 0.26]} />
+        <boxGeometry args={[11.8, 3.05, 0.26]} />
         <meshStandardMaterial color="#0f1725" emissive="#0a1320" emissiveIntensity={0.22} metalness={0.2} roughness={0.7} />
       </mesh>
 
-      <mesh position={[0, 0.87, 0.145]}>
-        <planeGeometry args={[7.9, 0.9]} />
-        <meshBasicMaterial map={bannerTexture} transparent opacity={0.88} />
+      <mesh position={[0, 0, 0.145]}>
+        <planeGeometry args={[11.15, 1.95]} />
+        <meshBasicMaterial map={bannerTexture} transparent opacity={0.95} />
       </mesh>
 
-      <mesh position={[0, 0.92, 0.146]}>
-        <planeGeometry args={[7.9, 0.9]} />
-        <meshBasicMaterial color="#08111d" transparent opacity={0.38} />
+      <mesh position={[0, 0, 0.146]}>
+        <planeGeometry args={[11.15, 1.95]} />
+        <meshBasicMaterial color="#08111d" transparent opacity={0.16} />
       </mesh>
-
-      <Text position={[0, 0.88, 0.151]} fontSize={0.26} maxWidth={7.6} textAlign="center" color="#cfe7ff" anchorX="center" anchorY="middle" outlineWidth={0.03} outlineColor="#0b1320">
-        {title}
-      </Text>
-
-      <PhaseRow index="01" y={0.18} title={phase1Title} body={phase1Body} />
-      <PhaseRow index="02" y={-0.62} title={phase2Title} body={phase2Body} />
-      <PhaseRow index="03" y={-1.42} title={phase3Title} body={phase3Body} />
-    </group>
-  );
-}
-
-function PhaseRow({ index, y, title, body }: { index: string; y: number; title: string; body: string }) {
-  return (
-    <group position={[0, y, 0.15]}>
-      <mesh position={[-3.35, 0, 0]}>
-        <circleGeometry args={[0.22, 24]} />
-        <meshBasicMaterial color="#1f3347" />
-      </mesh>
-      <Text position={[-3.35, 0, 0.01]} fontSize={0.13} color="#9fcfff" anchorX="center" anchorY="middle">
-        {index}
-      </Text>
-
-      <Text position={[-2.95, 0.1, 0]} fontSize={0.165} maxWidth={6.4} lineHeight={1.2} textAlign="left" color="#dff0ff" anchorX="left" anchorY="middle">
-        {title}
-      </Text>
-      <Text position={[-2.95, -0.15, 0]} fontSize={0.12} maxWidth={6.4} lineHeight={1.24} textAlign="left" color="#9eb8d1" anchorX="left" anchorY="middle">
-        {body}
-      </Text>
     </group>
   );
 }
@@ -1124,58 +1071,167 @@ function PolygonZone({
 }
 
 function ZoneInterceptAnimation() {
-  const defenderRef = useRef<THREE.Mesh>(null);
+  const defenderRef = useRef<THREE.Group>(null);
   const attackerRef = useRef<THREE.Group>(null);
-  const seekerRef = useRef<THREE.Mesh>(null);
   const blastRef = useRef<THREE.Mesh>(null);
   const beamRef = useRef<THREE.Mesh>(null);
-  const gltf = useGLTF(shahedAnimatedModelUrl);
+  const attackerGltf = useGLTF(shahedAnimatedModelUrl);
+  const defenderGltf = useGLTF(droneModelUrl);
+  const platformGltf = useGLTF(dronePlatformModelUrl);
+  const cityGltf = useGLTF(cityModelUrl);
   const attackerVisual = useMemo(
     () =>
-      prepareImportedModel(gltf.scene, {
-        targetSize: 1.55,
+      prepareImportedModel(attackerGltf.scene, {
+        targetSize: 1.675,
         lift: 0,
         envMapIntensity: 0.24,
         roughnessDelta: 0.16,
         metalnessDelta: -0.08,
       }),
-    [gltf.scene]
+    [attackerGltf.scene]
+  );
+  const interceptorVisual = useMemo(
+    () =>
+      prepareImportedModel(defenderGltf.scene, {
+        targetSize: 1.15,
+        lift: 0,
+        envMapIntensity: 0.46,
+        roughnessDelta: 0.06,
+      }),
+    [defenderGltf.scene]
+  );
+  const platformVisual = useMemo(
+    () =>
+      prepareImportedModel(platformGltf.scene, {
+        targetSize: 4.3,
+        lift: 0,
+        envMapIntensity: 0.32,
+        roughnessDelta: 0.14,
+        metalnessDelta: -0.06,
+      }),
+    [platformGltf.scene]
+  );
+  const cityVisual = useMemo(
+    () => {
+      const root = prepareImportedModel(cityGltf.scene, {
+        targetSize: 6.9,
+        lift: 0,
+        envMapIntensity: 0.4,
+        roughnessDelta: 0.08,
+        metalnessDelta: -0.03,
+      });
+
+      // Emphasize skyline silhouette by stretching city strongly in vertical axis.
+      root.scale.y *= 3;
+      const adjustedBounds = new THREE.Box3().setFromObject(root);
+      root.position.y -= adjustedBounds.min.y;
+
+      return root;
+    },
+    [cityGltf.scene]
   );
   const beamMid = useMemo(() => new THREE.Vector3(), []);
   const beamDir = useMemo(() => new THREE.Vector3(), []);
   const beamQuat = useMemo(() => new THREE.Quaternion(), []);
   const up = useMemo(() => new THREE.Vector3(0, 1, 0), []);
-  const defenseHover = useMemo(() => new THREE.Vector3(-2, 5.6, 0), []);
-  const cityTarget = useMemo(() => new THREE.Vector3(5.2, 1.1, 3.8), []);
-  const attackerStart = useMemo(() => new THREE.Vector3(-7.2, 1.35, -4.6), []);
-  const attackerEnd = useMemo(() => new THREE.Vector3(5.7, 1.2, 3.2), []);
+  const interceptControl = useMemo(() => new THREE.Vector3(), []);
+  const interceptEnd = useMemo(() => new THREE.Vector3(), []);
+  const launchMid = useMemo(() => new THREE.Vector3(), []);
+  const launchTangent = useMemo(() => new THREE.Vector3(), []);
+  const interceptTangent = useMemo(() => new THREE.Vector3(), []);
+  const mixedDir = useMemo(() => new THREE.Vector3(), []);
+  const attackTangent = useMemo(() => new THREE.Vector3(), []);
+  const platformPosition = useMemo(() => new THREE.Vector3(5.65, 0.62, -1.85), []);
+  const cityPosition = useMemo(() => new THREE.Vector3(4.8, 0.65, 4.6), []);
+  const launchPoint = useMemo(() => platformPosition.clone().add(new THREE.Vector3(-0.75, 1.45, 0.3)), [platformPosition]);
+  const defenseHover = useMemo(() => launchPoint.clone().setY(5.55), [launchPoint]);
+  const attackerCurve = useMemo(
+    () =>
+      new THREE.CatmullRomCurve3(
+        [
+          new THREE.Vector3(-7.4, 1.55, -5.2),
+          new THREE.Vector3(-2.1, 2.25, -3.7),
+          new THREE.Vector3(1.8, 1.9, -1.1),
+          new THREE.Vector3(3.6, 1.7, 0.55),
+          new THREE.Vector3(4.8, 1.35, 1.8),
+          new THREE.Vector3(5.2, 1.2, 2.8),
+        ],
+        false,
+        "catmullrom",
+        0.28
+      ),
+    []
+  );
+  const previousAttackerYaw = useRef(0);
+  const previousDefenderYaw = useRef(0);
+  const strikeLaunchPoint = useRef(new THREE.Vector3());
+  const strikeCaptured = useRef(false);
 
-  useFrame((state) => {
+  useFrame((state, delta) => {
     const defender = defenderRef.current;
     const attacker = attackerRef.current;
-    const seeker = seekerRef.current;
     const blast = blastRef.current;
     const beam = beamRef.current;
 
-    if (!defender || !attacker || !seeker || !blast || !beam) {
+    if (!defender || !attacker || !blast || !beam) {
       return;
     }
 
     const cycle = 18;
     const t = state.clock.elapsedTime % cycle;
 
-    defender.position.set(
-      defenseHover.x + Math.sin(t * 0.9) * 0.35,
-      defenseHover.y + Math.sin(t * 1.6) * 0.22,
-      defenseHover.z + Math.cos(t * 0.8) * 0.25
-    );
+    const launchStart = 2.2;
+    const launchEnd = 4.6;
+    const trackStart = 4.6;
+    const strikeStart = 6.9;
+    const strikeEnd = 8.6;
 
-    const attackerProgress = THREE.MathUtils.clamp(t / 11.5, 0, 1);
-    attacker.position.lerpVectors(attackerStart, attackerEnd, attackerProgress);
-    attacker.rotation.y = Math.atan2(cityTarget.x - attacker.position.x, cityTarget.z - attacker.position.z);
-    attacker.visible = t < 14.6;
+    if (t < launchStart) {
+      strikeCaptured.current = false;
+      defender.position.set(launchPoint.x, launchPoint.y + Math.sin(t * 2.6) * 0.015, launchPoint.z);
+      defender.rotation.set(0, Math.PI * 0.2, 0);
+      previousDefenderYaw.current = Math.PI * 0.2;
+    } else if (t < launchEnd) {
+      const p = THREE.MathUtils.smootherstep((t - launchStart) / (launchEnd - launchStart), 0, 1);
+      const launchPeak = defenseHover.y;
+      launchMid.copy(launchPoint).addScaledVector(up, (launchPeak - launchPoint.y) * p);
+      defender.position.copy(launchMid);
 
-    const tracking = t >= 3.2 && t < 11.8;
+      launchTangent.set(0, 1, 0);
+
+      const yaw = Math.atan2(launchTangent.x, launchTangent.z);
+      const pitch = -Math.atan2(launchTangent.y, Math.max(0.001, Math.hypot(launchTangent.x, launchTangent.z)));
+      const yawDelta = wrapAngle(yaw - previousDefenderYaw.current);
+      previousDefenderYaw.current = yaw;
+      const roll = THREE.MathUtils.clamp(-yawDelta * 5.1, -0.5, 0.5);
+      defender.rotation.set(pitch, yaw + interceptDemoYawFix, roll);
+    } else {
+      const orbit = t * 0.62;
+      const orbitX = Math.sin(orbit) * 0.68;
+      const orbitZ = Math.cos(orbit * 1.04) * 0.45;
+      defender.position.set(defenseHover.x + orbitX, defenseHover.y + Math.sin(t * 1.2) * 0.2, defenseHover.z + orbitZ);
+
+      const loiterDir = mixedDir.set(Math.cos(orbit), 0, -Math.sin(orbit * 1.04)).normalize();
+      const loiterYaw = Math.atan2(loiterDir.x, loiterDir.z);
+      defender.rotation.set(-0.05 + Math.sin(t * 1.9) * 0.03, loiterYaw + interceptDemoYawFix, Math.sin(t * 1.4) * 0.08);
+      previousDefenderYaw.current = loiterYaw;
+    }
+
+    const attackerProgress = THREE.MathUtils.clamp(t / 9.4, 0, 1);
+    attacker.position.copy(attackerCurve.getPointAt(attackerProgress));
+    attackTangent.copy(attackerCurve.getTangentAt(attackerProgress)).normalize();
+    const attackerYaw = Math.atan2(attackTangent.x, attackTangent.z);
+    const attackerPitch = -Math.atan2(attackTangent.y, Math.max(0.001, Math.hypot(attackTangent.x, attackTangent.z)));
+    const attackerYawDelta = wrapAngle(attackerYaw - previousAttackerYaw.current);
+    previousAttackerYaw.current = attackerYaw;
+    const attackerRoll = THREE.MathUtils.clamp(-attackerYawDelta * 2.2 + Math.sin(attackerProgress * Math.PI * 2.8) * 0.06, -0.24, 0.24);
+    const rotLerp = 1 - Math.exp(-delta * 8);
+    attacker.rotation.x = THREE.MathUtils.lerp(attacker.rotation.x, attackerPitch, rotLerp);
+    attacker.rotation.y = THREE.MathUtils.lerp(attacker.rotation.y, attackerYaw + shahedDemoYawFix, rotLerp);
+    attacker.rotation.z = THREE.MathUtils.lerp(attacker.rotation.z, attackerRoll, rotLerp);
+    attacker.visible = t < 9.8;
+
+    const tracking = t >= trackStart && t < strikeStart;
     beam.visible = tracking;
     if (tracking) {
       beamMid.copy(defender.position).add(attacker.position).multiplyScalar(0.5);
@@ -1189,20 +1245,43 @@ function ZoneInterceptAnimation() {
       beamMat.opacity = 0.22 + Math.sin(t * 9.5) * 0.05;
     }
 
-    const strikeStart = 11.8;
-    const strikeEnd = 14.2;
     const strikePhase = THREE.MathUtils.clamp((t - strikeStart) / (strikeEnd - strikeStart), 0, 1);
-    const strikeActive = t >= strikeStart && t <= strikeEnd;
-    seeker.visible = strikeActive;
-    if (strikeActive) {
-      seeker.position.lerpVectors(defender.position, attacker.position, strikePhase);
-      seeker.scale.setScalar(1 + strikePhase * 0.4);
+    if (t >= strikeStart && t <= strikeEnd) {
+      if (!strikeCaptured.current) {
+        strikeLaunchPoint.current.copy(defender.position);
+        strikeCaptured.current = true;
+      }
+
+      interceptEnd.copy(attacker.position).addScaledVector(attackTangent, -0.2);
+      interceptControl.copy(strikeLaunchPoint.current).lerp(interceptEnd, 0.48).addScaledVector(up, 1.25);
+
+      defender.position
+        .copy(strikeLaunchPoint.current)
+        .multiplyScalar((1 - strikePhase) * (1 - strikePhase))
+        .addScaledVector(interceptControl, 2 * (1 - strikePhase) * strikePhase)
+        .addScaledVector(interceptEnd, strikePhase * strikePhase);
+
+      interceptTangent
+        .copy(interceptControl)
+        .sub(defender.position)
+        .multiplyScalar(2 * (1 - strikePhase))
+        .addScaledVector(mixedDir.copy(interceptEnd).sub(interceptControl), 2 * strikePhase)
+        .normalize();
+
+      const yaw = Math.atan2(interceptTangent.x, interceptTangent.z);
+      const pitch = -Math.atan2(interceptTangent.y, Math.max(0.001, Math.hypot(interceptTangent.x, interceptTangent.z)));
+      const yawDelta = wrapAngle(yaw - previousDefenderYaw.current);
+      previousDefenderYaw.current = yaw;
+      const roll = THREE.MathUtils.clamp(-yawDelta * 5.4, -0.72, 0.72);
+      defender.rotation.set(pitch, yaw + interceptDemoYawFix, roll);
+    } else if (t > strikeEnd) {
+      strikeCaptured.current = false;
     }
 
     const blastPhase = THREE.MathUtils.clamp((t - strikeEnd) / 2.1, 0, 1);
-    blast.visible = t >= strikeEnd && t <= 16.3;
+    blast.visible = t >= strikeEnd && t <= 10.1;
     if (blast.visible) {
-      blast.position.copy(attacker.position);
+      blast.position.copy(attacker.position).addScaledVector(attackTangent, -0.12);
       blast.scale.setScalar(0.4 + blastPhase * 3.4);
       const blastMat = blast.material as THREE.MeshStandardMaterial;
       blastMat.opacity = 0.55 - blastPhase * 0.5;
@@ -1212,38 +1291,29 @@ function ZoneInterceptAnimation() {
 
   return (
     <group>
-      <group position={[4.8, 0.65, 4.6]}>
-        <mesh position={[-1.3, 0.4, 0.5]}>
-          <boxGeometry args={[1, 0.8, 1]} />
-          <meshStandardMaterial color="#586575" />
-        </mesh>
-        <mesh position={[0.2, 0.55, -0.1]}>
-          <boxGeometry args={[1.4, 1.1, 1.2]} />
-          <meshStandardMaterial color="#667589" />
-        </mesh>
-        <mesh position={[1.5, 0.35, 0.7]}>
-          <boxGeometry args={[0.9, 0.7, 0.9]} />
-          <meshStandardMaterial color="#4f5f72" />
+      <group position={[platformPosition.x, platformPosition.y, platformPosition.z]}>
+        <primitive object={platformVisual} rotation={[0, Math.PI * 0.52, 0]} />
+      </group>
+
+      <group position={[cityPosition.x, cityPosition.y, cityPosition.z]}>
+        <primitive object={cityVisual} rotation={[0, Math.PI * -0.08, 0]} />
+      </group>
+
+      <group ref={defenderRef}>
+        <primitive object={interceptorVisual} rotation={[0, Math.PI + droneModelYawOffset, droneModelRollOffset]} />
+        <mesh position={[0, -0.28, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+          <ringGeometry args={[0.42, 0.58, 40]} />
+          <meshBasicMaterial color="#7cedc8" transparent opacity={0.45} side={THREE.DoubleSide} />
         </mesh>
       </group>
 
-      <mesh ref={defenderRef}>
-        <sphereGeometry args={[0.42, 18, 18]} />
-        <meshStandardMaterial color="#7cedc8" emissive="#7cedc8" emissiveIntensity={0.45} />
-      </mesh>
-
       <group ref={attackerRef}>
-        <primitive object={attackerVisual} rotation={[0, Math.PI / 2, 0]} />
+        <primitive object={attackerVisual} />
       </group>
 
       <mesh ref={beamRef}>
         <cylinderGeometry args={[0.055, 0.055, 1, 10]} />
         <meshStandardMaterial color="#7bcfff" emissive="#5dc7ff" emissiveIntensity={0.5} transparent opacity={0.2} />
-      </mesh>
-
-      <mesh ref={seekerRef}>
-        <sphereGeometry args={[0.14, 14, 14]} />
-        <meshStandardMaterial color="#ffe08d" emissive="#ffd26e" emissiveIntensity={1.05} />
       </mesh>
 
       <mesh ref={blastRef}>

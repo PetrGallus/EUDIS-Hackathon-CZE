@@ -4,6 +4,8 @@ import * as THREE from "three";
 import { useI18n } from "./i18n";
 import { PortfolioScene } from "./scene/PortfolioScene";
 import { IslandChallenge } from "./scene/IslandChallenge";
+import { TutorialGuideAvatar } from "./components/TutorialGuideAvatar";
+import { TutorialShahedPreview } from "./components/TutorialShahedPreview";
 import { getProjects } from "./scene/projects";
 import "./styles.css";
 
@@ -78,10 +80,22 @@ export function App() {
   const activeProject = focusedProjectId ? projects.find((p) => p.id === focusedProjectId) : null;
   const challengeProject = challengeProjectId ? projects.find((p) => p.id === challengeProjectId) : null;
   const dossierProject = openProjectId ? projects.find((p) => p.id === openProjectId) : null;
+  const formatTutorialChip = (text: string) => {
+    const normalized = text.includes("//") ? text.split("//")[1]?.trim() ?? text : text;
+    return normalized.toUpperCase();
+  };
+  const tutorialStageChipByStage: Record<Exclude<TutorialStage, "done">, string> = {
+    intro: formatTutorialChip(messages.tutorial.introLabel),
+    flight: formatTutorialChip(messages.tutorial.flightTitle),
+    checkpoint: formatTutorialChip(messages.tutorial.checkpointLabel),
+    target: formatTutorialChip(messages.tutorial.targetTitle),
+    simulation: formatTutorialChip(messages.tutorial.simulationTitle),
+    outro: formatTutorialChip(messages.tutorial.outroLabel),
+  };
 
   return (
     <main className="app-shell">
-      <Canvas dpr={[1, 2]} shadows gl={{ antialias: true, toneMapping: THREE.ACESFilmicToneMapping, toneMappingExposure: 0.78 }}>
+      <Canvas dpr={[1, 2]} shadows gl={{ antialias: true, toneMapping: THREE.ACESFilmicToneMapping, toneMappingExposure: 0.156 }}>
         <PortfolioScene
           focusedProjectId={focusedProjectId}
           unlockedProjectIds={unlockedProjectIds}
@@ -113,6 +127,10 @@ export function App() {
 
       {tutorialActive && (tutorialStage === "flight" || tutorialStage === "target" || tutorialStage === "simulation") ? (
         <aside className="tutorial-escort-card">
+          <div className="tutorial-guide-row">
+            <TutorialGuideAvatar compact variant={tutorialStage === "simulation" ? "two" : "one"} />
+            <span className="tutorial-guide-chip">{tutorialStageChipByStage[tutorialStage]}</span>
+          </div>
           <p className="label">{messages.tutorial.label}</p>
           {tutorialStage === "flight" ? (
             <>
@@ -328,7 +346,10 @@ export function App() {
         <div className="tutorial-overlay">
           <div className="tutorial-panel tutorial-panel-intro">
             <img className="tutorial-logo" src="/Logo.png" alt="DroneGone team logo" />
-            <p className="label">{messages.tutorial.introLabel}</p>
+            <div className="tutorial-guide-row tutorial-guide-row-panel">
+              <TutorialGuideAvatar variant="one" />
+              <span className="tutorial-guide-chip">{tutorialStageChipByStage.intro}</span>
+            </div>
             <h2>{messages.tutorial.introTitle}</h2>
             <p>{messages.tutorial.introBody}</p>
 
@@ -378,7 +399,11 @@ export function App() {
       {localeChosen && tutorialStage === "checkpoint" ? (
         <div className="tutorial-overlay tutorial-overlay-soft">
           <div className="tutorial-panel">
-            <p className="label">{messages.tutorial.checkpointLabel}</p>
+            <div className="tutorial-guide-row tutorial-guide-row-panel">
+              <TutorialGuideAvatar variant="one" />
+              <span className="tutorial-guide-chip">{tutorialStageChipByStage.checkpoint}</span>
+            </div>
+            <TutorialShahedPreview />
             <h2>{messages.tutorial.checkpointTitle}</h2>
             <p>{messages.tutorial.checkpointBodyA}</p>
             <p>{messages.tutorial.checkpointBodyB}</p>
@@ -395,7 +420,10 @@ export function App() {
       {localeChosen && tutorialStage === "outro" ? (
         <div className="tutorial-overlay tutorial-overlay-soft">
           <div className="tutorial-panel">
-            <p className="label">{messages.tutorial.outroLabel}</p>
+            <div className="tutorial-guide-row tutorial-guide-row-panel">
+              <TutorialGuideAvatar variant="two" />
+              <span className="tutorial-guide-chip">{tutorialStageChipByStage.outro}</span>
+            </div>
             <h2>{messages.tutorial.outroTitle}</h2>
             <p>{messages.tutorial.outroBodyA}</p>
             <p>{messages.tutorial.outroBodyB}</p>
