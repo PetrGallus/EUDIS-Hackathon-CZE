@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useI18n } from "../i18n";
 import type { ProjectNode } from "../scene/projects";
 
 type ChallengePhase = "playing" | "won" | "lost";
@@ -119,6 +120,7 @@ function stepGame(game: GameState, project: ProjectNode): GameState {
 }
 
 export function IslandChallenge({ project, onAbort, onSuccess }: IslandChallengeProps) {
+  const { messages } = useI18n();
   const [game, setGame] = useState<GameState>(() => createInitialState(project));
 
   useEffect(() => {
@@ -205,9 +207,9 @@ export function IslandChallenge({ project, onAbort, onSuccess }: IslandChallenge
     <aside className="modal challenge-modal">
       <div className="modal-panel challenge-panel">
         <div className="modal-topline">
-          <p className="label">16-bit intercept challenge</p>
+          <p className="label">{messages.challenge.label}</p>
           <button type="button" className="ghost-button" onClick={onAbort}>
-            Abort
+            {messages.challenge.abort}
           </button>
         </div>
 
@@ -219,21 +221,21 @@ export function IslandChallenge({ project, onAbort, onSuccess }: IslandChallenge
           </div>
           <div className="challenge-stats">
             <article>
-              <span>Timer</span>
+              <span>{messages.challenge.timer}</span>
               <strong>{Math.ceil(game.remainingMs / 1000)}s</strong>
             </article>
             <article>
-              <span>Kills</span>
+              <span>{messages.challenge.kills}</span>
               <strong>{game.kills} / {project.challenge.targetKills}</strong>
             </article>
             <article>
-              <span>Difficulty</span>
-              <strong>Easy</strong>
+              <span>{messages.challenge.difficulty}</span>
+              <strong>{messages.challenge.easy}</strong>
             </article>
           </div>
         </div>
 
-        <div className="challenge-grid" role="img" aria-label="Retro intercept challenge grid">
+        <div className="challenge-grid" role="img" aria-label={messages.challenge.gridAria}>
           {cells.map((cell) => (
             <div key={cell.key} className={cell.className}>
               {cell.glyph}
@@ -242,16 +244,16 @@ export function IslandChallenge({ project, onAbort, onSuccess }: IslandChallenge
         </div>
 
         <div className="challenge-footer">
-          <p>Move with A/D or arrow keys. Press Space to fire. Stop the incoming Shaheds before they breach the last row.</p>
+          <p>{messages.challenge.instructions}</p>
 
           {game.phase === "won" ? (
             <div className="challenge-outcome success">
               <div>
-                <strong>Sector secure.</strong>
-                <p>The island dossier is unlocked.</p>
+                <strong>{messages.challenge.successTitle}</strong>
+                <p>{messages.challenge.successBody}</p>
               </div>
               <button type="button" className="primary-button" onClick={onSuccess}>
-                Open dossier
+                {messages.challenge.successButton}
               </button>
             </div>
           ) : null}
@@ -259,11 +261,11 @@ export function IslandChallenge({ project, onAbort, onSuccess }: IslandChallenge
           {game.phase === "lost" ? (
             <div className="challenge-outcome failure">
               <div>
-                <strong>Sector lost.</strong>
-                <p>Retry the easy intercept to reveal the island content.</p>
+                <strong>{messages.challenge.failureTitle}</strong>
+                <p>{messages.challenge.failureBody}</p>
               </div>
               <button type="button" className="primary-button" onClick={() => setGame(createInitialState(project))}>
-                Retry challenge
+                {messages.challenge.retryButton}
               </button>
             </div>
           ) : null}

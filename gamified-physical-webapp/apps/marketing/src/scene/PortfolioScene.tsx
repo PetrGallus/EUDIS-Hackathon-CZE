@@ -4,7 +4,8 @@ import { EffectComposer, Bloom, Vignette } from "@react-three/postprocessing";
 import { CuboidCollider, Physics, RigidBody, type RapierRigidBody } from "@react-three/rapier";
 import { Suspense, useEffect, useMemo, useRef, type MutableRefObject } from "react";
 import * as THREE from "three";
-import { projects, type ProjectNode } from "./projects";
+import { useI18n } from "../i18n";
+import { getProjects, type ProjectNode } from "./projects";
 import droneModelUrl from "../images/drone.glb?url";
 import islandModelUrl from "../images/island.glb?url";
 import waterCubeModelUrl from "../images/water_cube.glb?url";
@@ -17,6 +18,12 @@ type PortfolioSceneProps = {
   unlockedProjectIds: Set<string>;
   onProjectFocus: (projectId: string | null) => void;
   paused: boolean;
+  tutorialActive: boolean;
+  tutorialGuidanceMode: "inactive" | "checkpoint" | "target";
+  tutorialCheckpoint: [number, number, number];
+  tutorialTarget: [number, number, number];
+  onTutorialCheckpointReach: () => void;
+  onTutorialTargetReach: () => void;
 };
 
 const controls = [
@@ -90,7 +97,7 @@ void main() {
   normal = normalize(normal + nmTangent * 0.16);
 
   vec3 viewDir = normalize(uCameraPos - vWorldPos);
-  float fresnel = pow(1.0 - max(dot(normal, viewDir), 0.0), 2.7);
+  float fresnel = pow(1.0 - max(dot(normal, viewDir), 0.0), 3.35);
 
   float radial = clamp(length(vWorldPos.xz) / 90.0, 0.0, 1.0);
   vec3 shallowColor = vec3(0.05, 0.21, 0.30);
@@ -106,24 +113,35 @@ void main() {
     minIslandDist = min(minIslandDist, d);
   }
 
-  float shorelineFoam = 1.0 - smoothstep(1.8, 5.2, minIslandDist);
-  float waveFoam = smoothstep(0.12, 0.23, abs(vWaveHeight));
+  float shorelineFoam = 1.0 - smoothstep(1.6, 4.2, minIslandDist);
+  float waveFoam = smoothstep(0.16, 0.28, abs(vWaveHeight));
   float sparkle = sin(vUv.x * 38.0 + uTime * 1.3) * sin(vUv.y * 34.0 - uTime * 1.2);
-  sparkle = smoothstep(0.92, 1.0, sparkle) * 0.06;
+  sparkle = smoothstep(0.97, 1.0, sparkle) * 0.022;
 
   vec3 foamTint = vec3(0.76, 0.93, 1.0);
   vec3 finalColor = waterColor;
-  finalColor += vec3(0.03, 0.08, 0.12) * fresnel;
-  finalColor += foamTint * shorelineFoam * 0.18;
-  finalColor += foamTint * waveFoam * 0.04;
-  finalColor += vec3(0.08, 0.12, 0.16) * sparkle;
+  finalColor += vec3(0.014, 0.04, 0.07) * fresnel;
+  finalColor += foamTint * shorelineFoam * 0.08;
+  finalColor += foamTint * waveFoam * 0.02;
+  finalColor += vec3(0.04, 0.07, 0.09) * sparkle;
 
-  float alpha = 0.61 + fresnel * 0.07 + shorelineFoam * 0.02;
+  float alpha = 0.43 + fresnel * 0.038 + shorelineFoam * 0.01;
   gl_FragColor = vec4(finalColor, clamp(alpha, 0.0, 1.0));
 }
 `;
 
-export function PortfolioScene({ focusedProjectId, unlockedProjectIds, onProjectFocus, paused }: PortfolioSceneProps) {
+export function PortfolioScene({
+  focusedProjectId,
+  unlockedProjectIds,
+  onProjectFocus,
+  paused,
+  tutorialActive,
+  tutorialGuidanceMode,
+  tutorialCheckpoint,
+  tutorialTarget,
+  onTutorialCheckpointReach,
+  onTutorialTargetReach,
+}: PortfolioSceneProps) {
   return (
     <KeyboardControls map={controls}>
       <Suspense fallback={null}>
@@ -132,15 +150,34 @@ export function PortfolioScene({ focusedProjectId, unlockedProjectIds, onProject
           unlockedProjectIds={unlockedProjectIds}
           onProjectFocus={onProjectFocus}
           paused={paused}
+          tutorialActive={tutorialActive}
+          tutorialGuidanceMode={tutorialGuidanceMode}
+          tutorialCheckpoint={tutorialCheckpoint}
+          tutorialTarget={tutorialTarget}
+          onTutorialCheckpointReach={onTutorialCheckpointReach}
+          onTutorialTargetReach={onTutorialTargetReach}
         />
       </Suspense>
     </KeyboardControls>
   );
 }
 
-function SceneContents({ focusedProjectId, unlockedProjectIds, onProjectFocus, paused }: PortfolioSceneProps) {
+function SceneContents({
+  focusedProjectId,
+  unlockedProjectIds,
+  onProjectFocus,
+  paused,
+  tutorialActive,
+  tutorialGuidanceMode,
+  tutorialCheckpoint,
+  tutorialTarget,
+  onTutorialCheckpointReach,
+  onTutorialTargetReach,
+}: PortfolioSceneProps) {
+  const { resolvedLocale, messages } = useI18n();
   const droneBody = useRef<RapierRigidBody>(null!);
   const heading = useRef(new THREE.Vector3(0, 0, 1));
+  const projects = useMemo(() => getProjects(resolvedLocale), [resolvedLocale]);
 
   return (
     <>
@@ -148,12 +185,12 @@ function SceneContents({ focusedProjectId, unlockedProjectIds, onProjectFocus, p
       <fog attach="fog" args={["#0b1a28", 70, 220]} />
       <PerspectiveCamera makeDefault position={[0, 7, 12]} fov={42} />
 
-      <ambientLight intensity={0.34} color="#c9dcf2" />
-      <hemisphereLight intensity={0.28} color="#9fc8e7" groundColor="#0f2336" />
+      <ambientLight intensity={0.3} color="#c9dcf2" />
+      <hemisphereLight intensity={0.24} color="#9fc8e7" groundColor="#0f2336" />
       <directionalLight
         castShadow
         position={[18, 22, 10]}
-        intensity={1.35}
+        intensity={0.94}
         color="#fff8ee"
         shadow-mapSize-width={2048}
         shadow-mapSize-height={2048}
@@ -165,23 +202,43 @@ function SceneContents({ focusedProjectId, unlockedProjectIds, onProjectFocus, p
         shadow-camera-bottom={-28}
         shadow-bias={-0.00008}
       />
-      <directionalLight position={[-24, 14, -18]} intensity={0.52} color="#8bb7d6" />
+      <directionalLight position={[-24, 14, -18]} intensity={0.38} color="#8bb7d6" />
 
       {/* Rim/counter lights help the drone read clearly against bright water. */}
       <pointLight position={[-15, 9, -15]} intensity={0.28} color="#7aaed1" distance={30} />
       <pointLight position={[14, 7, -10]} intensity={0.24} color="#86a7c4" distance={26} />
+      <pointLight position={[0, 5, 4]} intensity={0.45} color="#f3b0a4" distance={18} />
 
       <Environment files="/hdri/ticknock_02_1k.exr" background={false} />
       <EnvironmentGrade />
       <Stars radius={140} depth={40} count={5500} factor={5} saturation={0} fade speed={0.35} />
 
-      <OceanSurface />
+      <OceanSurface projects={projects} />
+      <OperationalZones />
+
+      {tutorialGuidanceMode !== "inactive" ? (
+        <TutorialRoute
+          mode={tutorialGuidanceMode}
+          checkpoint={tutorialCheckpoint}
+          target={tutorialTarget}
+          checkpointLabel={messages.scene.checkpoint}
+          targetLabel={messages.scene.shahedTarget}
+        />
+      ) : null}
 
       <Physics gravity={[0, 0, 0]}>
         <Floor />
         <BoundaryWalls />
         <Drone bodyRef={droneBody} headingRef={heading} paused={paused} />
-        <TargetShahed />
+        <TargetShahed label={messages.scene.target} />
+        <TutorialProgressWatcher
+          bodyRef={droneBody}
+          mode={tutorialGuidanceMode}
+          checkpoint={tutorialCheckpoint}
+          target={tutorialTarget}
+          onCheckpointReach={onTutorialCheckpointReach}
+          onTargetReach={onTutorialTargetReach}
+        />
 
         {projects.map((project) => (
           <ProjectIsland
@@ -190,6 +247,7 @@ function SceneContents({ focusedProjectId, unlockedProjectIds, onProjectFocus, p
             unlocked={unlockedProjectIds.has(project.id)}
             project={project}
             onFocus={onProjectFocus}
+            tutorialLocked={tutorialActive}
           />
         ))}
       </Physics>
@@ -453,7 +511,7 @@ function FollowCamera({ bodyRef, headingRef }: { bodyRef: MutableRefObject<Rapie
   return null;
 }
 
-function ProjectIsland({ active, unlocked, project, onFocus }: { active: boolean; unlocked: boolean; project: ProjectNode; onFocus: (projectId: string | null) => void }) {
+function ProjectIsland({ active, unlocked, project, onFocus, tutorialLocked }: { active: boolean; unlocked: boolean; project: ProjectNode; onFocus: (projectId: string | null) => void; tutorialLocked: boolean }) {
   const gltf = useGLTF(islandModelUrl);
   const islandVisual = useMemo(() => {
     const root = gltf.scene.clone(true);
@@ -500,8 +558,16 @@ function ProjectIsland({ active, unlocked, project, onFocus }: { active: boolean
       <CuboidCollider
         args={[4.2, 2.4, 4.2]}
         sensor
-        onIntersectionEnter={() => onFocus(project.id)}
-        onIntersectionExit={() => onFocus(null)}
+        onIntersectionEnter={() => {
+          if (!tutorialLocked) {
+            onFocus(project.id);
+          }
+        }}
+        onIntersectionExit={() => {
+          if (!tutorialLocked) {
+            onFocus(null);
+          }
+        }}
       />
 
       <primitive object={islandVisual} />
@@ -521,7 +587,150 @@ function ProjectIsland({ active, unlocked, project, onFocus }: { active: boolean
   );
 }
 
-function TargetShahed() {
+function TutorialProgressWatcher({
+  bodyRef,
+  mode,
+  checkpoint,
+  target,
+  onCheckpointReach,
+  onTargetReach,
+}: {
+  bodyRef: MutableRefObject<RapierRigidBody>;
+  mode: "inactive" | "checkpoint" | "target";
+  checkpoint: [number, number, number];
+  target: [number, number, number];
+  onCheckpointReach: () => void;
+  onTargetReach: () => void;
+}) {
+  const checkpointHit = useRef(false);
+  const targetHit = useRef(false);
+
+  useEffect(() => {
+    if (mode !== "checkpoint") {
+      checkpointHit.current = false;
+    }
+    if (mode !== "target") {
+      targetHit.current = false;
+    }
+  }, [mode]);
+
+  useFrame(() => {
+    const body = bodyRef.current;
+    if (!body || mode === "inactive") {
+      return;
+    }
+
+    const position = body.translation();
+    const current = new THREE.Vector3(position.x, position.y, position.z);
+
+    if (mode === "checkpoint" && !checkpointHit.current) {
+      const checkpointDistance = current.distanceTo(new THREE.Vector3(...checkpoint));
+      if (checkpointDistance <= 3.4) {
+        checkpointHit.current = true;
+        onCheckpointReach();
+      }
+    }
+
+    if (mode === "target" && !targetHit.current) {
+      const targetDistance = current.distanceTo(new THREE.Vector3(...target));
+      if (targetDistance <= 3.3) {
+        targetHit.current = true;
+        onTargetReach();
+      }
+    }
+  });
+
+  return null;
+}
+
+function TutorialRoute({
+  mode,
+  checkpoint,
+  target,
+  checkpointLabel,
+  targetLabel,
+}: {
+  mode: "checkpoint" | "target";
+  checkpoint: [number, number, number];
+  target: [number, number, number];
+  checkpointLabel: string;
+  targetLabel: string;
+}) {
+  const checkpointPulseRef = useRef<THREE.Mesh>(null);
+  const targetPulseRef = useRef<THREE.Mesh>(null);
+
+  const points = useMemo(
+    () => [
+      new THREE.Vector3(-16, 0.18, -16),
+      new THREE.Vector3(checkpoint[0], 0.18, checkpoint[2]),
+      new THREE.Vector3(target[0], 0.18, target[2]),
+    ],
+    [checkpoint, target]
+  );
+
+  const geometry = useMemo(() => new THREE.BufferGeometry().setFromPoints(points), [points]);
+  const material = useMemo(
+    () => new THREE.LineDashedMaterial({ color: "#ff5f5f", dashSize: 1.25, gapSize: 0.55, transparent: true, opacity: 0.95 }),
+    []
+  );
+  const routeLine = useMemo(() => {
+    const line = new THREE.Line(geometry, material);
+    line.computeLineDistances();
+    return line;
+  }, [geometry, material]);
+
+  useEffect(() => {
+    return () => geometry.dispose();
+  }, [geometry]);
+
+  useEffect(() => {
+    return () => material.dispose();
+  }, [material]);
+
+  useFrame((state) => {
+    material.opacity = 0.72 + (Math.sin(state.clock.elapsedTime * 4.2) + 1) * 0.08;
+
+    const pulseScale = 1 + Math.sin(state.clock.elapsedTime * 3.2) * 0.18;
+    if (checkpointPulseRef.current) {
+      checkpointPulseRef.current.scale.setScalar(mode === "checkpoint" ? pulseScale : 1);
+    }
+    if (targetPulseRef.current) {
+      targetPulseRef.current.scale.setScalar(mode === "target" ? pulseScale : 1);
+    }
+  });
+
+  return (
+    <group>
+      <primitive object={routeLine} />
+
+      <group position={[checkpoint[0], 0.08, checkpoint[2]]} visible={mode === "checkpoint"}>
+        <mesh ref={checkpointPulseRef} rotation={[-Math.PI / 2, 0, 0]}>
+          <ringGeometry args={[1.8, 2.35, 64]} />
+          <meshBasicMaterial color="#ff8f7d" transparent opacity={0.42} side={THREE.DoubleSide} />
+        </mesh>
+        <Float speed={1.4} rotationIntensity={0} floatIntensity={0.2} position={[0, 1.8, 0]}>
+          <Text fontSize={0.34} color="#ffd5cf" anchorX="center" anchorY="middle" outlineWidth={0.05} outlineColor="#2d0707">
+            {checkpointLabel}
+          </Text>
+        </Float>
+      </group>
+
+      <group position={[target[0], 0.08, target[2]]} visible={mode === "target"}>
+        <mesh ref={targetPulseRef} rotation={[-Math.PI / 2, 0, 0]}>
+          <ringGeometry args={[2.8, 3.4, 96]} />
+          <meshBasicMaterial color="#ff4b4b" transparent opacity={0.4} side={THREE.DoubleSide} />
+        </mesh>
+        <Float speed={1.2} rotationIntensity={0} floatIntensity={0.16} position={[0, 3.3, 0]}>
+          <Text fontSize={0.38} color="#ffb4b4" anchorX="center" anchorY="middle" outlineWidth={0.05} outlineColor="#290808">
+            {targetLabel}
+          </Text>
+        </Float>
+      </group>
+    </group>
+  );
+}
+
+function TargetShahed({ label }: { label: string }) {
   const gltf = useGLTF(shahedModelUrl);
   const shahedVisual = useMemo(() => {
     const root = gltf.scene.clone(true);
@@ -536,11 +745,15 @@ function TargetShahed() {
       if (Array.isArray(obj.material)) {
         obj.material.forEach((mat) => {
           if (mat instanceof THREE.MeshStandardMaterial || mat instanceof THREE.MeshPhysicalMaterial) {
-            mat.envMapIntensity = 0.5;
+            mat.envMapIntensity = 0.22;
+            mat.roughness = Math.min(1, mat.roughness + 0.16);
+            mat.metalness = Math.max(0.03, mat.metalness - 0.1);
           }
         });
       } else if (obj.material instanceof THREE.MeshStandardMaterial || obj.material instanceof THREE.MeshPhysicalMaterial) {
-        obj.material.envMapIntensity = 0.5;
+        obj.material.envMapIntensity = 0.22;
+        obj.material.roughness = Math.min(1, obj.material.roughness + 0.16);
+        obj.material.metalness = Math.max(0.03, obj.material.metalness - 0.1);
       }
     });
 
@@ -580,10 +793,248 @@ function TargetShahed() {
           outlineWidth={0.05}
           outlineColor="#220b0b"
         >
-          TARGET
+          {label}
         </Text>
       </Float>
+      <mesh position={[0, -0.01, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <circleGeometry args={[1.7, 72]} />
+        <meshBasicMaterial color="#101722" transparent opacity={0.22} side={THREE.DoubleSide} />
+      </mesh>
     </RigidBody>
+  );
+}
+
+function OperationalZones() {
+  return (
+    <group>
+      <PolygonZone position={[22, 0, -16]} radius={10.5} sides={6} title="INTERCEPT DEMO">
+        <ZoneInterceptAnimation />
+      </PolygonZone>
+
+      <PolygonZone position={[22, 0, 16]} radius={9.8} sides={8} title="C2 DATA LINK">
+        <ZoneNetworkAnimation />
+      </PolygonZone>
+    </group>
+  );
+}
+
+function PolygonZone({
+  position,
+  radius,
+  sides,
+  title,
+  children,
+}: {
+  position: [number, number, number];
+  radius: number;
+  sides: number;
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <group position={position}>
+      <mesh position={[0, 0.38, 0]}>
+        <cylinderGeometry args={[radius, radius, 0.76, sides, 1, true]} />
+        <meshStandardMaterial color="#4d6f86" transparent opacity={0.14} emissive="#2e4d63" emissiveIntensity={0.22} side={THREE.DoubleSide} />
+      </mesh>
+
+      <mesh position={[0, 0.78, 0]}>
+        <cylinderGeometry args={[radius, radius, 0.06, sides]} />
+        <meshStandardMaterial color="#85aecd" transparent opacity={0.38} emissive="#89bee2" emissiveIntensity={0.18} />
+      </mesh>
+
+      <mesh position={[0, 0.03, 0]}>
+        <cylinderGeometry args={[radius * 0.96, radius * 0.96, 0.05, sides]} />
+        <meshBasicMaterial color="#233a4b" transparent opacity={0.26} />
+      </mesh>
+
+      <Float speed={1.1} rotationIntensity={0} floatIntensity={0.11} position={[0, 3.35, 0]}>
+        <Text fontSize={0.58} color="#c6e4ff" anchorX="center" anchorY="middle" outlineWidth={0.05} outlineColor="#091320">
+          {title}
+        </Text>
+      </Float>
+
+      {children}
+    </group>
+  );
+}
+
+function ZoneInterceptAnimation() {
+  const defenderRef = useRef<THREE.Mesh>(null);
+  const attackerRef = useRef<THREE.Mesh>(null);
+  const seekerRef = useRef<THREE.Mesh>(null);
+  const blastRef = useRef<THREE.Mesh>(null);
+  const beamRef = useRef<THREE.Mesh>(null);
+  const beamMid = useMemo(() => new THREE.Vector3(), []);
+  const beamDir = useMemo(() => new THREE.Vector3(), []);
+  const beamQuat = useMemo(() => new THREE.Quaternion(), []);
+  const up = useMemo(() => new THREE.Vector3(0, 1, 0), []);
+  const defenseHover = useMemo(() => new THREE.Vector3(-2, 5.6, 0), []);
+  const cityTarget = useMemo(() => new THREE.Vector3(5.2, 1.1, 3.8), []);
+  const attackerStart = useMemo(() => new THREE.Vector3(-7.2, 1.35, -4.6), []);
+  const attackerEnd = useMemo(() => new THREE.Vector3(5.7, 1.2, 3.2), []);
+
+  useFrame((state) => {
+    const defender = defenderRef.current;
+    const attacker = attackerRef.current;
+    const seeker = seekerRef.current;
+    const blast = blastRef.current;
+    const beam = beamRef.current;
+
+    if (!defender || !attacker || !seeker || !blast || !beam) {
+      return;
+    }
+
+    const cycle = 18;
+    const t = state.clock.elapsedTime % cycle;
+
+    defender.position.set(
+      defenseHover.x + Math.sin(t * 0.9) * 0.35,
+      defenseHover.y + Math.sin(t * 1.6) * 0.22,
+      defenseHover.z + Math.cos(t * 0.8) * 0.25
+    );
+
+    const attackerProgress = THREE.MathUtils.clamp(t / 11.5, 0, 1);
+    attacker.position.lerpVectors(attackerStart, attackerEnd, attackerProgress);
+    attacker.rotation.y = Math.atan2(cityTarget.x - attacker.position.x, cityTarget.z - attacker.position.z);
+    attacker.visible = t < 14.6;
+
+    const tracking = t >= 3.2 && t < 11.8;
+    beam.visible = tracking;
+    if (tracking) {
+      beamMid.copy(defender.position).add(attacker.position).multiplyScalar(0.5);
+      beamDir.copy(attacker.position).sub(defender.position);
+      const beamLen = beamDir.length();
+      beam.position.copy(beamMid);
+      beam.scale.set(1, beamLen, 1);
+      beamQuat.setFromUnitVectors(up, beamDir.normalize());
+      beam.quaternion.copy(beamQuat);
+      const beamMat = beam.material as THREE.MeshStandardMaterial;
+      beamMat.opacity = 0.22 + Math.sin(t * 9.5) * 0.05;
+    }
+
+    const strikeStart = 11.8;
+    const strikeEnd = 14.2;
+    const strikePhase = THREE.MathUtils.clamp((t - strikeStart) / (strikeEnd - strikeStart), 0, 1);
+    const strikeActive = t >= strikeStart && t <= strikeEnd;
+    seeker.visible = strikeActive;
+    if (strikeActive) {
+      seeker.position.lerpVectors(defender.position, attacker.position, strikePhase);
+      seeker.scale.setScalar(1 + strikePhase * 0.4);
+    }
+
+    const blastPhase = THREE.MathUtils.clamp((t - strikeEnd) / 2.1, 0, 1);
+    blast.visible = t >= strikeEnd && t <= 16.3;
+    if (blast.visible) {
+      blast.position.copy(attacker.position);
+      blast.scale.setScalar(0.4 + blastPhase * 3.4);
+      const blastMat = blast.material as THREE.MeshStandardMaterial;
+      blastMat.opacity = 0.55 - blastPhase * 0.5;
+      blastMat.emissiveIntensity = 1.4 - blastPhase;
+    }
+  });
+
+  return (
+    <group>
+      <group position={[4.8, 0.65, 4.6]}>
+        <mesh position={[-1.3, 0.4, 0.5]}>
+          <boxGeometry args={[1, 0.8, 1]} />
+          <meshStandardMaterial color="#586575" />
+        </mesh>
+        <mesh position={[0.2, 0.55, -0.1]}>
+          <boxGeometry args={[1.4, 1.1, 1.2]} />
+          <meshStandardMaterial color="#667589" />
+        </mesh>
+        <mesh position={[1.5, 0.35, 0.7]}>
+          <boxGeometry args={[0.9, 0.7, 0.9]} />
+          <meshStandardMaterial color="#4f5f72" />
+        </mesh>
+      </group>
+
+      <mesh ref={defenderRef}>
+        <sphereGeometry args={[0.42, 18, 18]} />
+        <meshStandardMaterial color="#7cedc8" emissive="#7cedc8" emissiveIntensity={0.45} />
+      </mesh>
+
+      <mesh ref={attackerRef}>
+        <coneGeometry args={[0.34, 1.12, 8]} />
+        <meshStandardMaterial color="#f38774" emissive="#d55f4f" emissiveIntensity={0.28} />
+      </mesh>
+
+      <mesh ref={beamRef}>
+        <cylinderGeometry args={[0.055, 0.055, 1, 10]} />
+        <meshStandardMaterial color="#7bcfff" emissive="#5dc7ff" emissiveIntensity={0.5} transparent opacity={0.2} />
+      </mesh>
+
+      <mesh ref={seekerRef}>
+        <sphereGeometry args={[0.14, 14, 14]} />
+        <meshStandardMaterial color="#ffe08d" emissive="#ffd26e" emissiveIntensity={1.05} />
+      </mesh>
+
+      <mesh ref={blastRef}>
+        <sphereGeometry args={[0.5, 20, 20]} />
+        <meshStandardMaterial color="#ffb78f" emissive="#ff8f5a" emissiveIntensity={1.4} transparent opacity={0.5} />
+      </mesh>
+    </group>
+  );
+}
+
+function ZoneNetworkAnimation() {
+  const ringA = useRef<THREE.Mesh>(null);
+  const ringB = useRef<THREE.Mesh>(null);
+  const packetA = useRef<THREE.Mesh>(null);
+  const packetB = useRef<THREE.Mesh>(null);
+
+  useFrame((state) => {
+    const t = state.clock.elapsedTime;
+    if (ringA.current) {
+      ringA.current.rotation.z = t * 0.34;
+    }
+    if (ringB.current) {
+      ringB.current.rotation.z = -t * 0.22;
+    }
+    if (packetA.current) {
+      packetA.current.position.y = 0.5 + ((t * 1.2) % 2.8);
+    }
+    if (packetB.current) {
+      packetB.current.position.y = 0.5 + (((t * 1.2) + 1.3) % 2.8);
+    }
+  });
+
+  return (
+    <group>
+      <mesh ref={ringA} position={[0, 1.25, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <ringGeometry args={[2.1, 2.35, 64]} />
+        <meshBasicMaterial color="#80d7ff" transparent opacity={0.4} side={THREE.DoubleSide} />
+      </mesh>
+      <mesh ref={ringB} position={[0, 1.9, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <ringGeometry args={[3.1, 3.35, 64]} />
+        <meshBasicMaterial color="#6ea9ff" transparent opacity={0.32} side={THREE.DoubleSide} />
+      </mesh>
+
+      <mesh position={[-2.1, 1.4, -1.8]}>
+        <boxGeometry args={[0.4, 2.8, 0.4]} />
+        <meshStandardMaterial color="#99aeca" emissive="#8db8dd" emissiveIntensity={0.2} />
+      </mesh>
+      <mesh position={[2.2, 1.4, 2]}>
+        <boxGeometry args={[0.4, 2.8, 0.4]} />
+        <meshStandardMaterial color="#99aeca" emissive="#8db8dd" emissiveIntensity={0.2} />
+      </mesh>
+
+      <mesh position={[0.1, 2.1, 0.12]} rotation={[0.4, 0.78, 0]}>
+        <boxGeometry args={[5.9, 0.08, 0.08]} />
+        <meshStandardMaterial color="#8ed9ff" emissive="#7fcfff" emissiveIntensity={0.45} transparent opacity={0.85} />
+      </mesh>
+
+      <mesh ref={packetA} position={[0.1, 0.5, 0.12]}>
+        <sphereGeometry args={[0.16, 12, 12]} />
+        <meshStandardMaterial color="#dff4ff" emissive="#cdefff" emissiveIntensity={0.6} />
+      </mesh>
+      <mesh ref={packetB} position={[0.1, 1.3, 0.12]}>
+        <sphereGeometry args={[0.13, 12, 12]} />
+        <meshStandardMaterial color="#c8edff" emissive="#b5e6ff" emissiveIntensity={0.55} />
+      </mesh>
+    </group>
   );
 }
 
@@ -654,9 +1105,9 @@ function Floor() {
   );
 }
 
-function OceanSurface() {
+function OceanSurface({ projects }: { projects: ProjectNode[] }) {
   const waterRef = useRef<THREE.Mesh>(null);
-  const waterNormal = useTexture('/textures/water_nor_1k.jpg');
+  const waterNormal = useTexture("/textures/water_nor_1k.jpg");
 
   useMemo(() => {
     setRepeatMap(waterNormal, 18);
@@ -716,12 +1167,12 @@ function OceanSurface() {
         <ringGeometry args={[12, 30, 128]} />
         <meshStandardMaterial
           color="#8eb9ca"
-          roughness={0.2}
-          metalness={0.2}
+          roughness={0.35}
+          metalness={0.12}
           emissive="#90c8db"
-          emissiveIntensity={0.02}
+          emissiveIntensity={0.012}
           transparent
-          opacity={0.02}
+          opacity={0.012}
           side={THREE.DoubleSide}
         />
       </mesh>
